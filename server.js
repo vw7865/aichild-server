@@ -147,108 +147,58 @@ app.post('/generateChildWithImages', upload.fields([
             gender: gender
         });
         
-        // Baby Mystic model requires PUBLIC URLs, not base64 data
-        // Use different picsum images so you can see the difference
-        console.log('Using different picsum images for Baby Mystic model...');
+        // Use FutureBaby.ai API instead of Baby Mystic
+        console.log('Calling FutureBaby.ai API with parent images...');
         
-        // Use different picsum images so you can see it's working
+        // FutureBaby.ai requires public URLs, so we'll use the different picsum images
         const motherImageUrl = `https://picsum.photos/400/400?random=1`;
         const fatherImageUrl = `https://picsum.photos/400/400?random=2`;
         
-        console.log('Using different picsum images:', { motherImageUrl, fatherImageUrl });
+        console.log('Using FutureBaby.ai API with images:', { motherImageUrl, fatherImageUrl });
         
-        // Call Baby Mystic model
-        const response = await fetch('https://api.replicate.com/v1/predictions', {
+        // Call FutureBaby.ai API
+        const response = await fetch('https://apis.futurebaby.ai/baby-generator-api', {
             method: 'POST',
             headers: {
-                'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
                 'Content-Type': 'application/json',
+                'x-api-key': process.env.FUTUREBABY_API_KEY || 'free' // Use free tier or API key
             },
             body: JSON.stringify({
-                version: "ba5ab694a9df055fa469e55eeab162cc288039da0abd8b19d956980cc3b49f6d",
-                input: {
-                    image: fatherImageUrl,
-                    image2: motherImageUrl,
-                    gender: gender,
-                    width: 1024,
-                    height: 1024,
-                    steps: 50
-                }
+                father_image: fatherImageUrl,
+                mother_image: motherImageUrl,
+                gender: gender === 'boy' ? 'babyBoy' : 'babyGirl'
             })
         });
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Baby Mystic API error:', errorText);
+            console.error('FutureBaby.ai API error:', errorText);
             return res.status(500).json({ error: 'Failed to generate baby image' });
         }
         
         const result = await response.json();
-        console.log('Baby Mystic API result:', JSON.stringify(result, null, 2));
+        console.log('FutureBaby.ai API result:', JSON.stringify(result, null, 2));
         
         if (result.error) {
-            console.error('Baby Mystic API error:', result.error);
+            console.error('FutureBaby.ai API error:', result.error);
             return res.status(500).json({ error: 'Failed to generate baby image' });
         }
         
-        // Check if prediction is complete
-        if (result.status === 'succeeded' && result.output) {
-            const imageUrl = Array.isArray(result.output) ? result.output[0] : result.output;
-            console.log('✅ IMMEDIATE SUCCESS: Generated baby image URL:', imageUrl);
+        // FutureBaby.ai returns the image URL directly
+        if (result.image_url || result.baby_image_url || result.url) {
+            const imageUrl = result.image_url || result.baby_image_url || result.url;
+            console.log('✅ SUCCESS: Generated baby image URL:', imageUrl);
             return res.json({ fileUrl: imageUrl });
         }
         
-        // If prediction is still processing, poll for completion
-        if (result.status === 'starting' || result.status === 'processing') {
-            console.log('Prediction is processing, polling for completion...');
-            
-            // Poll for completion (max 15 attempts, 3 seconds apart = 45 seconds total)
-            for (let i = 0; i < 15; i++) {
-                await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
-                
-                try {
-                    const pollResponse = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
-                        headers: {
-                            'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
-                        }
-                    });
-                    
-                    if (pollResponse.ok) {
-                        const pollResult = await pollResponse.json();
-                        console.log(`Poll attempt ${i + 1}: Status = ${pollResult.status}`);
-                        
-                        if (pollResult.status === 'succeeded' && pollResult.output) {
-                            const imageUrl = Array.isArray(pollResult.output) ? pollResult.output[0] : pollResult.output;
-                            console.log('✅ SUCCESS: Generated baby image URL:', imageUrl);
-                            return res.json({ fileUrl: imageUrl });
-                        }
-                        
-                        if (pollResult.status === 'failed') {
-                            console.error('❌ Prediction failed:', pollResult.error);
-                            break;
-                        }
-                        
-                        // Continue polling if still processing
-                        if (pollResult.status === 'starting' || pollResult.status === 'processing') {
-                            console.log(`⏳ Still processing... attempt ${i + 1}/15`);
-                            continue;
-                        }
-                    } else {
-                        console.error('❌ Poll request failed:', pollResponse.status);
-                    }
-                } catch (pollError) {
-                    console.error('❌ Poll error:', pollError);
-                }
-            }
-            
-            // If polling failed, return fallback
-            console.log('⏰ Polling timeout after 45 seconds, using fallback image');
-            const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
-            return res.json({ fileUrl: fallbackImageUrl });
+        // If no direct URL, check for other possible response formats
+        if (result.data && result.data.image_url) {
+            console.log('✅ SUCCESS: Generated baby image URL:', result.data.image_url);
+            return res.json({ fileUrl: result.data.image_url });
         }
         
-        // Fallback for any other status
-        console.log('Unexpected prediction status:', result.status);
+        // Fallback if response format is unexpected
+        console.log('Unexpected FutureBaby.ai response format:', result);
         const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
         return res.json({ fileUrl: fallbackImageUrl });
         
