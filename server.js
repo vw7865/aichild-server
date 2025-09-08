@@ -323,6 +323,31 @@ app.post('/generateChild', async (req, res) => {
     }
 });
 
+// Debug endpoint to check stored images
+app.get('/debug/images', (req, res) => {
+    if (!global.uploadedImages) {
+        return res.json({ message: 'No images stored', count: 0, images: {} });
+    }
+    
+    const imageKeys = Object.keys(global.uploadedImages);
+    const imageInfo = {};
+    
+    for (const key of imageKeys) {
+        const image = global.uploadedImages[key];
+        imageInfo[key] = {
+            size: image.buffer.length,
+            mimetype: image.mimetype,
+            originalname: image.originalname
+        };
+    }
+    
+    res.json({ 
+        message: 'Stored images', 
+        count: imageKeys.length, 
+        images: imageInfo 
+    });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', message: 'AI Child Server is running' });
