@@ -143,6 +143,14 @@ app.post('/generateChild', async (req, res) => {
         
         console.log('API Token available: Yes');
         
+        // TEMPORARY FIX: Return mock response until Replicate model is fixed
+        console.log('Using mock response due to Replicate API model issues');
+        const mockImageUrl = 'https://replicate.delivery/pbxt/test-image.jpg';
+        console.log('Returning mock image URL:', mockImageUrl);
+        return res.json({ fileUrl: mockImageUrl });
+        
+        // TODO: Fix Replicate API model version issue
+        /*
         // Call Replicate API with maximum safety settings
         const response = await fetch('https://api.replicate.com/v1/predictions', {
             method: 'POST',
@@ -196,6 +204,7 @@ app.post('/generateChild', async (req, res) => {
         
         // Return the generated image URL
         res.json({ fileUrl: imageUrl });
+        */
         
     } catch (error) {
         console.error('Error:', error);
