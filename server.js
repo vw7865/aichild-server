@@ -143,8 +143,8 @@ app.post('/generateChild', async (req, res) => {
         
         console.log('API Token available: Yes');
         
-        // Use Stable Diffusion 3 for accurate toddler generation for ALL types of couples
-        console.log('Generating accurate 2-year-old toddler image using Stable Diffusion 3');
+        // Use SDXL for accurate toddler generation for ALL types of couples
+        console.log('Generating accurate 2-year-old toddler image using SDXL with enhanced diversity');
         
         // Enhanced prompt for accurate toddler generation for ALL types of couples
         const expressions = ['smiling', 'laughing', 'curious', 'playful', 'content', 'focused'];
@@ -160,7 +160,7 @@ app.post('/generateChild', async (req, res) => {
         const ageDescription = safeAge === 'baby' ? '2-year-old toddler' : `${safeAge} child`;
         
         // Create a more neutral, accurate prompt that works for all ethnicities
-        let enhancedPrompt = `A beautiful ${ageDescription} ${safeGender}, ${safePositivePrompt}, smooth toddler skin, chubby cheeks, big curious eyes, ${randomExpression}, ${randomClothing}, ${randomBackground}, high quality, photorealistic, professional child photography, natural lighting, soft focus, adorable, innocent, pure, wholesome, realistic facial features, authentic appearance, toddler proportions, age-appropriate features, natural child features, realistic child appearance`;
+        let enhancedPrompt = `A beautiful ${ageDescription} ${safeGender}, ${safePositivePrompt}, smooth toddler skin, chubby cheeks, big curious eyes, ${randomExpression}, ${randomClothing}, ${randomBackground}, high quality, photorealistic, professional child photography, natural lighting, soft focus, adorable, innocent, pure, wholesome, realistic facial features, authentic appearance, toddler proportions, age-appropriate features, natural child features, realistic child appearance, diverse representation, inclusive features, multicultural appearance, global diversity, mixed heritage, interracial features, worldwide representation, authentic ethnic features, natural skin tone, realistic complexion`;
         
         // Enhanced negative prompt for maximum safety and accuracy
         let enhancedNegativePrompt = negativePromptText + ', adult features, mature face, facial hair, mustache, beard, goatee, sideburns, stubble, inappropriate content, sexual content, adult content, mature content, teenager, adolescent, puberty, naked, nude, undressed, clothing removed, inappropriate clothing, adult clothing, mature clothing, teenager clothing, adolescent clothing, puberty clothing, exposed, revealing, inappropriate, sexual, adult, mature, grown up, man, male adult, inappropriate content, sexual, adult, mature, teenager, adolescent, puberty, naked, nude, undressed, clothing removed, inappropriate, sexual content, adult content, mature content, exposed, revealing, inappropriate clothing, adult clothing, mature clothing, teenager clothing, adolescent clothing, puberty clothing, blurry, low quality, distorted, deformed, ugly, scary, frightening, dark, shadowy, unnatural, artificial, fake, cartoon, anime, drawing, painting, sketch, illustration, newborn, infant, too young, premature, school age, elementary school, teenager, adolescent, puberty, adult proportions, mature body, adult clothing, school uniform, asian bias, chinese features, monoracial, single ethnicity, homogeneous features';
@@ -179,14 +179,15 @@ app.post('/generateChild', async (req, res) => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                version: "stability-ai/stable-diffusion-3-medium:bf6ac1407c5f61e654b9f2f7714a27d33afd1f9f3ea26e8f26f9a0b7d246b4c",
+                version: "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
                 input: {
                     prompt: enhancedPrompt,
                     negative_prompt: enhancedNegativePrompt,
                     width: 1024,
                     height: 1024,
                     num_inference_steps: 20,
-                    guidance_scale: 4.0
+                    guidance_scale: 7.5,
+                    scheduler: "K_EULER"
                 }
             }),
             signal: controller.signal
