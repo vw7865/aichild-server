@@ -143,27 +143,24 @@ app.post('/generateChild', async (req, res) => {
         
         console.log('API Token available: Yes');
         
-        // Use Flux for diverse toddler generation with enhanced prompts for interracial accuracy
-        console.log('Generating diverse 2-year-old toddler image using Flux');
+        // Use Stable Diffusion 3 for accurate toddler generation for ALL types of couples
+        console.log('Generating accurate 2-year-old toddler image using Stable Diffusion 3');
         
-        // Enhanced prompt for diverse toddler generation with variety
+        // Enhanced prompt for accurate toddler generation for ALL types of couples
         const expressions = ['smiling', 'laughing', 'curious', 'playful', 'content', 'focused'];
         const clothingStyles = ['adorable toddler clothes', 'cute shirt and pants', 'colorful outfit', 'comfortable play clothes', 'casual toddler wear'];
         const backgrounds = ['soft pastel background', 'natural home setting', 'gentle lighting', 'warm cozy environment', 'playroom setting'];
-        const ethnicities = ['mixed race', 'multiracial', 'diverse heritage', 'interracial features', 'global features', 'worldwide features'];
-        const skinTones = ['natural skin tone', 'realistic complexion', 'authentic coloring', 'diverse features', 'mixed skin tone'];
         
         // Add variety based on parameters
         const randomExpression = expressions[Math.floor(Math.random() * expressions.length)];
         const randomClothing = clothingStyles[Math.floor(Math.random() * clothingStyles.length)];
         const randomBackground = backgrounds[Math.floor(Math.random() * backgrounds.length)];
-        const randomEthnicity = ethnicities[Math.floor(Math.random() * ethnicities.length)];
-        const randomSkinTone = skinTones[Math.floor(Math.random() * skinTones.length)];
         
         // Use 2-year-old characteristics instead of baby
         const ageDescription = safeAge === 'baby' ? '2-year-old toddler' : `${safeAge} child`;
         
-        let enhancedPrompt = `A beautiful ${ageDescription} ${safeGender}, ${safePositivePrompt}, smooth toddler skin, chubby cheeks, big curious eyes, ${randomExpression}, ${randomClothing}, ${randomBackground}, ${randomEthnicity}, ${randomSkinTone}, high quality, photorealistic, professional child photography, natural lighting, soft focus, adorable, innocent, pure, wholesome, realistic facial features, authentic appearance, toddler proportions, age-appropriate features, diverse representation, inclusive features, global diversity, multicultural features, mixed heritage child, interracial toddler, diverse ethnic background, worldwide representation`;
+        // Create a more neutral, accurate prompt that works for all ethnicities
+        let enhancedPrompt = `A beautiful ${ageDescription} ${safeGender}, ${safePositivePrompt}, smooth toddler skin, chubby cheeks, big curious eyes, ${randomExpression}, ${randomClothing}, ${randomBackground}, high quality, photorealistic, professional child photography, natural lighting, soft focus, adorable, innocent, pure, wholesome, realistic facial features, authentic appearance, toddler proportions, age-appropriate features, natural child features, realistic child appearance`;
         
         // Enhanced negative prompt for maximum safety and accuracy
         let enhancedNegativePrompt = negativePromptText + ', adult features, mature face, facial hair, mustache, beard, goatee, sideburns, stubble, inappropriate content, sexual content, adult content, mature content, teenager, adolescent, puberty, naked, nude, undressed, clothing removed, inappropriate clothing, adult clothing, mature clothing, teenager clothing, adolescent clothing, puberty clothing, exposed, revealing, inappropriate, sexual, adult, mature, grown up, man, male adult, inappropriate content, sexual, adult, mature, teenager, adolescent, puberty, naked, nude, undressed, clothing removed, inappropriate, sexual content, adult content, mature content, exposed, revealing, inappropriate clothing, adult clothing, mature clothing, teenager clothing, adolescent clothing, puberty clothing, blurry, low quality, distorted, deformed, ugly, scary, frightening, dark, shadowy, unnatural, artificial, fake, cartoon, anime, drawing, painting, sketch, illustration, newborn, infant, too young, premature, school age, elementary school, teenager, adolescent, puberty, adult proportions, mature body, adult clothing, school uniform, asian bias, chinese features, monoracial, single ethnicity, homogeneous features';
@@ -182,15 +179,14 @@ app.post('/generateChild', async (req, res) => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                version: "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+                version: "stability-ai/stable-diffusion-3-medium:bf6ac1407c5f61e654b9f2f7714a27d33afd1f9f3ea26e8f26f9a0b7d246b4c",
                 input: {
                     prompt: enhancedPrompt,
                     negative_prompt: enhancedNegativePrompt,
                     width: 1024,
                     height: 1024,
                     num_inference_steps: 20,
-                    guidance_scale: 7.5,
-                    scheduler: "K_EULER"
+                    guidance_scale: 4.0
                 }
             }),
             signal: controller.signal
