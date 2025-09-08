@@ -211,29 +211,13 @@ app.post('/generateChild', async (req, res) => {
         console.log('Mother image size:', motherImage.buffer.length);
         console.log('Father image size:', fatherImage.buffer.length);
         
-        // Upload mother image to get public URL
-        const motherFormData = new FormData();
-        motherFormData.append('file', new Blob([motherImage.buffer], { type: motherImage.mimetype }), 'mother.jpg');
+        // Convert images to base64 data URLs for immediate use
+        const motherImageData = `data:${motherImage.mimetype};base64,${motherImage.buffer.toString('base64')}`;
+        const fatherImageData = `data:${fatherImage.mimetype};base64,${fatherImage.buffer.toString('base64')}`;
         
-        const motherUploadResponse = await fetch('https://file.io', {
-            method: 'POST',
-            body: motherFormData
-        });
-        const motherResult = await motherUploadResponse.json();
-        const motherImageUrl = motherResult.link;
-        
-        // Upload father image to get public URL
-        const fatherFormData = new FormData();
-        fatherFormData.append('file', new Blob([fatherImage.buffer], { type: fatherImage.mimetype }), 'father.jpg');
-        
-        const fatherUploadResponse = await fetch('https://file.io', {
-            method: 'POST',
-            body: fatherFormData
-        });
-        const fatherResult = await fatherUploadResponse.json();
-        const fatherImageUrl = fatherResult.link;
-        
-        console.log('Uploaded parent images to public URLs:', { motherImageUrl, fatherImageUrl });
+        console.log('Using base64 data URLs for Baby Mystic model');
+        console.log('Mother image size:', motherImage.buffer.length);
+        console.log('Father image size:', fatherImage.buffer.length);
         
         // Call Stable Diffusion API for diverse toddler generation with timeout
         const controller = new AbortController();
@@ -248,8 +232,8 @@ app.post('/generateChild', async (req, res) => {
             body: JSON.stringify({
                 version: "smoosh-sh/baby-mystic:ba5ab694",
                 input: {
-                    image: fatherImageUrl,
-                    image2: motherImageUrl,
+                    image: fatherImageData,
+                    image2: motherImageData,
                     gender: safeGender,
                     width: 1024,
                     height: 1024,
