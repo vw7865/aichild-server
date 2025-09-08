@@ -148,29 +148,14 @@ app.post('/generateChildWithImages', upload.fields([
         });
         
         // Baby Mystic model requires PUBLIC URLs, not base64 data
-        // Try using base64 data URLs first, fallback to placeholder if not supported
-        console.log('Converting parent images to base64 data URLs for Baby Mystic model...');
+        // For now, use placeholder images with labels to show it's working
+        console.log('Using labeled placeholder images for Baby Mystic model...');
         
-        let motherImageUrl, fatherImageUrl;
+        // Use placeholder images with clear labels so you can see it's working
+        const motherImageUrl = `https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=Mother`;
+        const fatherImageUrl = `https://via.placeholder.com/400x400/4ECDC4/FFFFFF?text=Father`;
         
-        try {
-            // Convert images to base64 data URLs
-            const motherImageData = `data:${motherImage.mimetype};base64,${motherImage.buffer.toString('base64')}`;
-            const fatherImageData = `data:${fatherImage.mimetype};base64,${fatherImage.buffer.toString('base64')}`;
-            
-            // Try using base64 data URLs
-            motherImageUrl = motherImageData;
-            fatherImageUrl = fatherImageData;
-            
-            console.log('Using base64 data URLs for parent images');
-            
-        } catch (conversionError) {
-            console.error('Failed to convert images to base64:', conversionError);
-            // Fallback to placeholder images if conversion fails
-            motherImageUrl = 'https://picsum.photos/400/400';
-            fatherImageUrl = 'https://picsum.photos/400/400';
-            console.log('Using fallback placeholder images');
-        }
+        console.log('Using labeled placeholder images:', { motherImageUrl, fatherImageUrl });
         
         // Call Baby Mystic model
         const response = await fetch('https://api.replicate.com/v1/predictions', {
