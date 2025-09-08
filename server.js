@@ -206,18 +206,34 @@ app.post('/generateChild', async (req, res) => {
         console.log('Generating accurate baby image using Baby Mystic model with parent images - FORCE DEPLOY');
         
         // Baby Mystic model requires PUBLIC URLs, not base64 data
-        // For now, let's use a simple approach - upload to a temporary public service
-        // In production, you'd want to use Cloudinary, AWS S3, or similar
-        
-        console.log('Baby Mystic requires public URLs, not base64 data');
+        // Upload the actual parent images to get public URLs
+        console.log('Baby Mystic requires public URLs, uploading parent images...');
         console.log('Mother image size:', motherImage.buffer.length);
         console.log('Father image size:', fatherImage.buffer.length);
         
-        // For testing, let's use sample public images first to verify the model works
-        const motherImageUrl = 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=400&fit=crop&crop=face';
-        const fatherImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
+        // Upload mother image to get public URL
+        const motherFormData = new FormData();
+        motherFormData.append('file', new Blob([motherImage.buffer], { type: motherImage.mimetype }), 'mother.jpg');
         
-        console.log('Using sample public URLs for testing:', { motherImageUrl, fatherImageUrl });
+        const motherUploadResponse = await fetch('https://file.io', {
+            method: 'POST',
+            body: motherFormData
+        });
+        const motherResult = await motherUploadResponse.json();
+        const motherImageUrl = motherResult.link;
+        
+        // Upload father image to get public URL
+        const fatherFormData = new FormData();
+        fatherFormData.append('file', new Blob([fatherImage.buffer], { type: fatherImage.mimetype }), 'father.jpg');
+        
+        const fatherUploadResponse = await fetch('https://file.io', {
+            method: 'POST',
+            body: fatherFormData
+        });
+        const fatherResult = await fatherUploadResponse.json();
+        const fatherImageUrl = fatherResult.link;
+        
+        console.log('Uploaded parent images to public URLs:', { motherImageUrl, fatherImageUrl });
         
         // Call Stable Diffusion API for diverse toddler generation with timeout
         const controller = new AbortController();
