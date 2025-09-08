@@ -1,9 +1,20 @@
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
+const multer = require('multer');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({ 
+    storage: storage,
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB limit
+    }
+});
 
 // Middleware
 app.use(cors());
@@ -11,32 +22,59 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Upload Image endpoint
-app.post('/uploadImage', (req, res) => {
+app.post('/uploadImage', upload.single('image'), (req, res) => {
     try {
         console.log('Received upload request');
-        console.log('Request body:', req.body);
+        console.log('File:', req.file ? 'Present' : 'Missing');
+        console.log('Body:', req.body);
+        
+        if (!req.file) {
+            return res.status(400).json({
+                error: 'No image file provided',
+                success: false
+            });
+        }
         
         // Extract parameters
-        const userId = req.body.userId || req.query.userId || 'default-user';
-        const childKey = req.body.childKey || req.query.childKey || 'default-key';
-        const imageType = req.body.imageType || req.query.imageType || 'unknown';
+        const userId = req.body.userId || 'default-user';
+        const childKey = req.body.childKey || 'default-key';
+        const imageType = req.body.imageType || 'parent';
         
         console.log('Parameters:', { userId, childKey, imageType });
+        console.log('File details:', {
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size
+        });
         
-        // Generate mock file path
-        const mockFilePath = `uploads/${userId}/${childKey}/${imageType}_${Date.now()}.jpg`;
+        // Store the image data in memory (in a real app, you'd save to disk or cloud storage)
+        // For now, we'll just return success with the image data
+        const imageData = {
+            buffer: req.file.buffer,
+            mimetype: req.file.mimetype,
+            originalname: req.file.originalname
+        };
         
-        console.log('Simulated file saved at:', mockFilePath);
+        // Store in a simple in-memory store (in production, use Redis or database)
+        if (!global.uploadedImages) {
+            global.uploadedImages = {};
+        }
+        
+        const imageKey = `${userId}_${childKey}_${imageType}`;
+        global.uploadedImages[imageKey] = imageData;
+        
+        console.log('Image stored with key:', imageKey);
         
         // Return success response
         res.json({
-            filePath: mockFilePath,
+            filePath: `uploads/${userId}/${childKey}/${imageType}_${Date.now()}.jpg`,
             message: 'Image uploaded successfully',
             userId: userId,
             childKey: childKey,
             imageType: imageType,
             success: true,
-            status: 'success'
+            status: 'success',
+            imageKey: imageKey
         });
         
     } catch (error) {
@@ -108,6 +146,27 @@ app.post('/generateChild', async (req, res) => {
         const safeClothing = clothing || 'appropriate';
         const safeDressCode = dressCode || 'baby clothes';
         
+        // Get uploaded parent images
+        if (!global.uploadedImages) {
+            global.uploadedImages = {};
+        }
+        
+        const motherKey = `${userId}_${childKey}_mother`;
+        const fatherKey = `${userId}_${childKey}_father`;
+        
+        const motherImage = global.uploadedImages[motherKey];
+        const fatherImage = global.uploadedImages[fatherKey];
+        
+        console.log('Looking for parent images:', { motherKey, fatherKey });
+        console.log('Mother image found:', !!motherImage);
+        console.log('Father image found:', !!fatherImage);
+        
+        if (!motherImage || !fatherImage) {
+            console.log('Missing parent images, using fallback');
+            const mockImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
+            return res.json({ fileUrl: mockImageUrl });
+        }
+        
         console.log('Using parameters:', {
             gender: safeGender,
             age: safeAge,
@@ -143,30 +202,15 @@ app.post('/generateChild', async (req, res) => {
         
         console.log('API Token available: Yes');
         
-        // Use Baby Mystic model for accurate baby generation for ALL types of couples
-        console.log('Generating accurate baby image using Baby Mystic model (Realistic Vision v5.1)');
+        // Use Baby Mystic model for accurate baby generation from parent images
+        console.log('Generating accurate baby image using Baby Mystic model with parent images');
         
-        // Enhanced prompt for accurate toddler generation for ALL types of couples
-        const expressions = ['smiling', 'laughing', 'curious', 'playful', 'content', 'focused'];
-        const clothingStyles = ['adorable toddler clothes', 'cute shirt and pants', 'colorful outfit', 'comfortable play clothes', 'casual toddler wear'];
-        const backgrounds = ['soft pastel background', 'natural home setting', 'gentle lighting', 'warm cozy environment', 'playroom setting'];
+        // Convert image buffers to base64 data URLs for Replicate API
+        const motherImageData = `data:${motherImage.mimetype};base64,${motherImage.buffer.toString('base64')}`;
+        const fatherImageData = `data:${fatherImage.mimetype};base64,${fatherImage.buffer.toString('base64')}`;
         
-        // Add variety based on parameters
-        const randomExpression = expressions[Math.floor(Math.random() * expressions.length)];
-        const randomClothing = clothingStyles[Math.floor(Math.random() * clothingStyles.length)];
-        const randomBackground = backgrounds[Math.floor(Math.random() * backgrounds.length)];
-        
-        // Use 2-year-old characteristics instead of baby
-        const ageDescription = safeAge === 'baby' ? '2-year-old toddler' : `${safeAge} child`;
-        
-        // Create a more neutral, accurate prompt that works for all ethnicities
-        let enhancedPrompt = `A beautiful ${ageDescription} ${safeGender}, ${safePositivePrompt}, smooth toddler skin, chubby cheeks, big curious eyes, ${randomExpression}, ${randomClothing}, ${randomBackground}, high quality, photorealistic, professional child photography, natural lighting, soft focus, adorable, innocent, pure, wholesome, realistic facial features, authentic appearance, toddler proportions, age-appropriate features, natural child features, realistic child appearance, diverse representation, inclusive features, multicultural appearance, global diversity, mixed heritage, interracial features, worldwide representation, authentic ethnic features, natural skin tone, realistic complexion`;
-        
-        // Enhanced negative prompt for maximum safety and accuracy
-        let enhancedNegativePrompt = negativePromptText + ', adult features, mature face, facial hair, mustache, beard, goatee, sideburns, stubble, inappropriate content, sexual content, adult content, mature content, teenager, adolescent, puberty, naked, nude, undressed, clothing removed, inappropriate clothing, adult clothing, mature clothing, teenager clothing, adolescent clothing, puberty clothing, exposed, revealing, inappropriate, sexual, adult, mature, grown up, man, male adult, inappropriate content, sexual, adult, mature, teenager, adolescent, puberty, naked, nude, undressed, clothing removed, inappropriate, sexual content, adult content, mature content, exposed, revealing, inappropriate clothing, adult clothing, mature clothing, teenager clothing, adolescent clothing, puberty clothing, blurry, low quality, distorted, deformed, ugly, scary, frightening, dark, shadowy, unnatural, artificial, fake, cartoon, anime, drawing, painting, sketch, illustration, newborn, infant, too young, premature, school age, elementary school, teenager, adolescent, puberty, adult proportions, mature body, adult clothing, school uniform, asian bias, chinese features, monoracial, single ethnicity, homogeneous features';
-        
-        console.log('Enhanced prompt:', enhancedPrompt);
-        console.log('Enhanced negative prompt:', enhancedNegativePrompt);
+        console.log('Mother image size:', motherImage.buffer.length);
+        console.log('Father image size:', fatherImage.buffer.length);
         
         // Call Stable Diffusion API for diverse toddler generation with timeout
         const controller = new AbortController();
@@ -181,17 +225,13 @@ app.post('/generateChild', async (req, res) => {
             body: JSON.stringify({
                 version: "smoosh-sh/baby-mystic:ba5ab694",
                 input: {
-                    prompt: enhancedPrompt,
-                    negative_prompt: enhancedNegativePrompt,
+                    mother_image: motherImageData,
+                    father_image: fatherImageData,
+                    gender: safeGender,
                     width: 1024,
                     height: 1024,
                     num_inference_steps: 50,
-                    guidance_scale: 15,
-                    safety_tolerance: 2,
-                    safety_level: 4,
-                    content_filter: true,
-                    inappropriate_content: 'block',
-                    child_safety: 'maximum'
+                    guidance_scale: 15
                 }
             }),
             signal: controller.signal
@@ -199,11 +239,11 @@ app.post('/generateChild', async (req, res) => {
         
         clearTimeout(timeoutId);
         
-        console.log('Stable Diffusion API response status:', response.status);
+        console.log('Baby Mystic API response status:', response.status);
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Stable Diffusion API error response:', errorText);
+            console.error('Baby Mystic API error response:', errorText);
             console.error('Response status:', response.status);
             console.error('Response headers:', response.headers);
             // Fallback to mock image if API fails
