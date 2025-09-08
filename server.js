@@ -147,15 +147,15 @@ app.post('/generateChildWithImages', upload.fields([
             gender: gender
         });
         
-        // Baby Mystic model requires PUBLIC URLs, not base64 data
-        // Use different picsum images so you can see the difference
-        console.log('Using different picsum images for Baby Mystic model...');
+        // MaxStudio requires PUBLIC URLs, not base64 data
+        // Use specific parent images for testing MaxStudio integration
+        console.log('Using specific parent images for MaxStudio testing...');
         
-        // Use different picsum images so you can see it's working
-        const motherImageUrl = `https://picsum.photos/400/400?random=1`;
-        const fatherImageUrl = `https://picsum.photos/400/400?random=2`;
+        // Use specific picsum images to represent Taylor Swift and Travis Kelce
+        const motherImageUrl = `https://picsum.photos/400/400?random=3`; // Taylor Swift representation
+        const fatherImageUrl = `https://picsum.photos/400/400?random=4`; // Travis Kelce representation
         
-        console.log('Using different picsum images:', { motherImageUrl, fatherImageUrl });
+        console.log('Using specific parent images:', { motherImageUrl, fatherImageUrl });
         
         console.log('Calling MaxStudio Baby Generator with parent images...');
         
