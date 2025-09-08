@@ -143,8 +143,8 @@ app.post('/generateChild', async (req, res) => {
         
         console.log('API Token available: Yes');
         
-        // Use SDXL for accurate toddler generation for ALL types of couples
-        console.log('Generating accurate 2-year-old toddler image using SDXL with enhanced diversity');
+        // Use Baby Mystic model for accurate baby generation for ALL types of couples
+        console.log('Generating accurate baby image using Baby Mystic model (Realistic Vision v5.1)');
         
         // Enhanced prompt for accurate toddler generation for ALL types of couples
         const expressions = ['smiling', 'laughing', 'curious', 'playful', 'content', 'focused'];
@@ -179,15 +179,19 @@ app.post('/generateChild', async (req, res) => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                version: "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+                version: "smoosh-sh/baby-mystic:ba5ab694",
                 input: {
                     prompt: enhancedPrompt,
                     negative_prompt: enhancedNegativePrompt,
                     width: 1024,
                     height: 1024,
-                    num_inference_steps: 20,
-                    guidance_scale: 7.5,
-                    scheduler: "K_EULER"
+                    num_inference_steps: 50,
+                    guidance_scale: 15,
+                    safety_tolerance: 2,
+                    safety_level: 4,
+                    content_filter: true,
+                    inappropriate_content: 'block',
+                    child_safety: 'maximum'
                 }
             }),
             signal: controller.signal
