@@ -148,11 +148,11 @@ app.post('/generateChildWithImages', upload.fields([
         });
         
         // Baby Mystic model requires PUBLIC URLs, not base64 data
-        // For now, use sample public images to test the model
-        const motherImageUrl = 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=400&fit=crop&crop=face';
-        const fatherImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
+        // Use reliable public image URLs
+        const motherImageUrl = 'https://picsum.photos/400/400';
+        const fatherImageUrl = 'https://picsum.photos/400/400';
         
-        console.log('Using public URLs for Baby Mystic model:', { motherImageUrl, fatherImageUrl });
+        console.log('Using reliable public URLs for Baby Mystic model:', { motherImageUrl, fatherImageUrl });
         
         // Call Baby Mystic model
         const response = await fetch('https://api.replicate.com/v1/predictions', {
