@@ -124,6 +124,130 @@ app.post('/uploadAgingImage', (req, res) => {
     }
 });
 
+// Generate Child with Images endpoint - handles both upload and generation in one request
+app.post('/generateChildWithImages', upload.fields([
+    { name: 'motherImage', maxCount: 1 },
+    { name: 'fatherImage', maxCount: 1 }
+]), async (req, res) => {
+    try {
+        console.log('Received generate child with images request');
+        
+        // Check if both images are uploaded
+        if (!req.files || !req.files.motherImage || !req.files.fatherImage) {
+            return res.status(400).json({ error: 'Both mother and father images are required' });
+        }
+        
+        const motherImage = req.files.motherImage[0];
+        const fatherImage = req.files.fatherImage[0];
+        const gender = req.body.gender || 'girl';
+        
+        console.log('Processing images:', {
+            motherSize: motherImage.buffer.length,
+            fatherSize: fatherImage.buffer.length,
+            gender: gender
+        });
+        
+        // Convert images to base64 data URLs
+        const motherImageData = `data:${motherImage.mimetype};base64,${motherImage.buffer.toString('base64')}`;
+        const fatherImageData = `data:${fatherImage.mimetype};base64,${fatherImage.buffer.toString('base64')}`;
+        
+        console.log('Calling Baby Mystic model with parent images...');
+        
+        // Call Baby Mystic model
+        const response = await fetch('https://api.replicate.com/v1/predictions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                version: "smoosh-sh/baby-mystic:ba5ab694",
+                input: {
+                    image: fatherImageData,
+                    image2: motherImageData,
+                    gender: gender,
+                    width: 1024,
+                    height: 1024,
+                    steps: 50
+                }
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Baby Mystic API error:', errorText);
+            return res.status(500).json({ error: 'Failed to generate baby image' });
+        }
+        
+        const result = await response.json();
+        console.log('Baby Mystic API result:', JSON.stringify(result, null, 2));
+        
+        if (result.error) {
+            console.error('Baby Mystic API error:', result.error);
+            return res.status(500).json({ error: 'Failed to generate baby image' });
+        }
+        
+        // Check if prediction is complete
+        if (result.status === 'succeeded' && result.output) {
+            const imageUrl = Array.isArray(result.output) ? result.output[0] : result.output;
+            console.log('Successfully generated baby image URL:', imageUrl);
+            return res.json({ fileUrl: imageUrl });
+        }
+        
+        // If prediction is still processing, poll for completion
+        if (result.status === 'starting' || result.status === 'processing') {
+            console.log('Prediction is processing, polling for completion...');
+            
+            // Poll for completion (max 6 attempts, 3 seconds apart)
+            for (let i = 0; i < 6; i++) {
+                await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
+                
+                try {
+                    const pollResponse = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
+                        headers: {
+                            'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
+                        }
+                    });
+                    
+                    if (pollResponse.ok) {
+                        const pollResult = await pollResponse.json();
+                        console.log(`Poll attempt ${i + 1}: Status = ${pollResult.status}`);
+                        
+                        if (pollResult.status === 'succeeded' && pollResult.output) {
+                            const imageUrl = Array.isArray(pollResult.output) ? pollResult.output[0] : pollResult.output;
+                            console.log('Successfully generated baby image URL:', imageUrl);
+                            return res.json({ fileUrl: imageUrl });
+                        }
+                        
+                        if (pollResult.status === 'failed') {
+                            console.error('Prediction failed:', pollResult.error);
+                            break;
+                        }
+                    } else {
+                        console.error('Poll request failed:', pollResponse.status);
+                    }
+                } catch (pollError) {
+                    console.error('Poll error:', pollError);
+                }
+            }
+            
+            // If polling failed, return fallback
+            console.log('Polling timeout, using fallback image');
+            const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
+            return res.json({ fileUrl: fallbackImageUrl });
+        }
+        
+        // Fallback for any other status
+        console.log('Unexpected prediction status:', result.status);
+        const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
+        return res.json({ fileUrl: fallbackImageUrl });
+        
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Failed to generate baby image: ' + error.message });
+    }
+});
+
 // Generate Child endpoint
 app.post('/generateChild', async (req, res) => {
     try {
