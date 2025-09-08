@@ -252,19 +252,20 @@ app.post('/generateChild', async (req, res) => {
         }
         
         const result = await response.json();
-        console.log('Stable Diffusion API result:', JSON.stringify(result, null, 2));
+        console.log('Baby Mystic API result:', JSON.stringify(result, null, 2));
         
         if (result.error) {
-            console.error('Stable Diffusion API error:', result.error);
+            console.error('Baby Mystic API error:', result.error);
             // Fallback to mock image if API fails
             const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
             console.log('API error, using fallback image:', fallbackImageUrl);
             return res.json({ fileUrl: fallbackImageUrl });
         }
         
-        // Check if prediction is complete
+        // Check if prediction is complete - Baby Mystic returns different format
         if (result.status === 'succeeded' && result.output) {
-            const imageUrl = result.output[0];
+            // Baby Mystic might return a single URL or array
+            const imageUrl = Array.isArray(result.output) ? result.output[0] : result.output;
             console.log('Successfully generated baby image URL:', imageUrl);
             return res.json({ fileUrl: imageUrl });
         }
@@ -288,9 +289,10 @@ app.post('/generateChild', async (req, res) => {
                         const pollResult = await pollResponse.json();
                         console.log(`Poll attempt ${i + 1}: Status = ${pollResult.status}`);
                         
-                        if (pollResult.status === 'succeeded' && pollResult.output && pollResult.output[0]) {
-                            const imageUrl = pollResult.output[0];
-                            console.log('Successfully generated toddler image URL:', imageUrl);
+                        if (pollResult.status === 'succeeded' && pollResult.output) {
+                            // Baby Mystic might return a single URL or array
+                            const imageUrl = Array.isArray(pollResult.output) ? pollResult.output[0] : pollResult.output;
+                            console.log('Successfully generated baby image URL:', imageUrl);
                             return res.json({ fileUrl: imageUrl });
                         }
                         
