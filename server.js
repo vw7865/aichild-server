@@ -136,7 +136,7 @@ app.post('/generateChild', async (req, res) => {
         if (!process.env.REPLICATE_API_TOKEN) {
             console.error('REPLICATE_API_TOKEN not set - using mock response for testing');
             // Return a mock response for testing
-            const mockImageUrl = 'https://replicate.delivery/pbxt/test-image.jpg';
+            const mockImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
             console.log('Returning mock image URL:', mockImageUrl);
             return res.json({ fileUrl: mockImageUrl });
         }
@@ -145,7 +145,7 @@ app.post('/generateChild', async (req, res) => {
         
         // TEMPORARY FIX: Return mock response until Replicate model is fixed
         console.log('Using mock response due to Replicate API model issues');
-        const mockImageUrl = 'https://replicate.delivery/pbxt/test-image.jpg';
+        const mockImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
         console.log('Returning mock image URL:', mockImageUrl);
         return res.json({ fileUrl: mockImageUrl });
         
