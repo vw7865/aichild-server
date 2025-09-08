@@ -147,11 +147,12 @@ app.post('/generateChildWithImages', upload.fields([
             gender: gender
         });
         
-        // Convert images to base64 data URLs
-        const motherImageData = `data:${motherImage.mimetype};base64,${motherImage.buffer.toString('base64')}`;
-        const fatherImageData = `data:${fatherImage.mimetype};base64,${fatherImage.buffer.toString('base64')}`;
+        // Baby Mystic model requires PUBLIC URLs, not base64 data
+        // For now, use sample public images to test the model
+        const motherImageUrl = 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=400&fit=crop&crop=face';
+        const fatherImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
         
-        console.log('Calling Baby Mystic model with parent images...');
+        console.log('Using public URLs for Baby Mystic model:', { motherImageUrl, fatherImageUrl });
         
         // Call Baby Mystic model
         const response = await fetch('https://api.replicate.com/v1/predictions', {
@@ -163,8 +164,8 @@ app.post('/generateChildWithImages', upload.fields([
             body: JSON.stringify({
                 version: "ba5ab694a9df055fa469e55eeab162cc288039da0abd8b19d956980cc3b49f6d",
                 input: {
-                    image: fatherImageData,
-                    image2: motherImageData,
+                    image: fatherImageUrl,
+                    image2: motherImageUrl,
                     gender: gender,
                     width: 1024,
                     height: 1024,
