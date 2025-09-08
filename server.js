@@ -203,7 +203,7 @@ app.post('/generateChild', async (req, res) => {
         console.log('API Token available: Yes');
         
         // Use Baby Mystic model for accurate baby generation from parent images
-        console.log('Generating accurate baby image using Baby Mystic model with parent images');
+        console.log('Generating accurate baby image using Baby Mystic model with parent images - FORCE DEPLOY');
         
         // Convert image buffers to base64 data URLs for Replicate API
         const motherImageData = `data:${motherImage.mimetype};base64,${motherImage.buffer.toString('base64')}`;
