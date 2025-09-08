@@ -174,13 +174,13 @@ app.post('/generateChild', async (req, res) => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                version: "stability-ai/stable-diffusion:27b93a2413e7f36cd83da926f3656280b2931564ff050bf9575f1fdf9bcd7478",
+                version: "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
                 input: {
                     prompt: enhancedPrompt,
                     negative_prompt: enhancedNegativePrompt,
-                    width: 512,
-                    height: 512,
-                    num_inference_steps: 50,
+                    width: 1024,
+                    height: 1024,
+                    num_inference_steps: 20,
                     guidance_scale: 7.5,
                     scheduler: "K_EULER"
                 }
@@ -192,6 +192,8 @@ app.post('/generateChild', async (req, res) => {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Stable Diffusion API error response:', errorText);
+            console.error('Response status:', response.status);
+            console.error('Response headers:', response.headers);
             // Fallback to mock image if API fails
             const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
             console.log('API failed, using fallback image:', fallbackImageUrl);
