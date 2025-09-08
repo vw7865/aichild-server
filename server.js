@@ -205,12 +205,19 @@ app.post('/generateChild', async (req, res) => {
         // Use Baby Mystic model for accurate baby generation from parent images
         console.log('Generating accurate baby image using Baby Mystic model with parent images - FORCE DEPLOY');
         
-        // Convert image buffers to base64 data URLs for Replicate API
-        const motherImageData = `data:${motherImage.mimetype};base64,${motherImage.buffer.toString('base64')}`;
-        const fatherImageData = `data:${fatherImage.mimetype};base64,${fatherImage.buffer.toString('base64')}`;
+        // Baby Mystic model requires PUBLIC URLs, not base64 data
+        // For now, let's use a simple approach - upload to a temporary public service
+        // In production, you'd want to use Cloudinary, AWS S3, or similar
         
+        console.log('Baby Mystic requires public URLs, not base64 data');
         console.log('Mother image size:', motherImage.buffer.length);
         console.log('Father image size:', fatherImage.buffer.length);
+        
+        // For testing, let's use sample public images first to verify the model works
+        const motherImageUrl = 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=400&fit=crop&crop=face';
+        const fatherImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
+        
+        console.log('Using sample public URLs for testing:', { motherImageUrl, fatherImageUrl });
         
         // Call Stable Diffusion API for diverse toddler generation with timeout
         const controller = new AbortController();
@@ -225,8 +232,8 @@ app.post('/generateChild', async (req, res) => {
             body: JSON.stringify({
                 version: "smoosh-sh/baby-mystic:ba5ab694",
                 input: {
-                    image: fatherImageData,
-                    image2: motherImageData,
+                    image: fatherImageUrl,
+                    image2: motherImageUrl,
                     gender: safeGender,
                     width: 1024,
                     height: 1024,
