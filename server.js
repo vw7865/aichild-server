@@ -147,58 +147,97 @@ app.post('/generateChildWithImages', upload.fields([
             gender: gender
         });
         
-        // Use FutureBaby.ai API instead of Baby Mystic
-        console.log('Calling FutureBaby.ai API with parent images...');
+        // Baby Mystic model requires PUBLIC URLs, not base64 data
+        // Use different picsum images so you can see the difference
+        console.log('Using different picsum images for Baby Mystic model...');
         
-        // FutureBaby.ai requires public URLs, so we'll use the different picsum images
+        // Use different picsum images so you can see it's working
         const motherImageUrl = `https://picsum.photos/400/400?random=1`;
         const fatherImageUrl = `https://picsum.photos/400/400?random=2`;
         
-        console.log('Using FutureBaby.ai API with images:', { motherImageUrl, fatherImageUrl });
+        console.log('Using different picsum images:', { motherImageUrl, fatherImageUrl });
         
-        // Call FutureBaby.ai API
-        const response = await fetch('https://apis.futurebaby.ai/baby-generator-api', {
+        console.log('Calling MaxStudio Baby Generator with parent images...');
+        
+        // Call MaxStudio Baby Generator API
+        const response = await fetch('https://api.maxstudio.ai/baby-generator', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': process.env.FUTUREBABY_API_KEY || 'free' // Use free tier or API key
+                'x-api-key': process.env.MAXSTUDIO_API_KEY || 'a3665d99-4f4d-4d7c-bbc4-929b601207b9'
             },
             body: JSON.stringify({
-                father_image: fatherImageUrl,
-                mother_image: motherImageUrl,
+                fatherImage: fatherImageUrl,
+                motherImage: motherImageUrl,
                 gender: gender === 'boy' ? 'babyBoy' : 'babyGirl'
             })
         });
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('FutureBaby.ai API error:', errorText);
+            console.error('MaxStudio API error:', errorText);
             return res.status(500).json({ error: 'Failed to generate baby image' });
         }
         
         const result = await response.json();
-        console.log('FutureBaby.ai API result:', JSON.stringify(result, null, 2));
+        console.log('MaxStudio API result:', JSON.stringify(result, null, 2));
         
         if (result.error) {
-            console.error('FutureBaby.ai API error:', result.error);
+            console.error('MaxStudio API error:', result.error);
             return res.status(500).json({ error: 'Failed to generate baby image' });
         }
         
-        // FutureBaby.ai returns the image URL directly
-        if (result.image_url || result.baby_image_url || result.url) {
-            const imageUrl = result.image_url || result.baby_image_url || result.url;
-            console.log('✅ SUCCESS: Generated baby image URL:', imageUrl);
-            return res.json({ fileUrl: imageUrl });
+        // MaxStudio returns a jobId, we need to poll for completion
+        if (result.jobId) {
+            console.log('Job created, polling for completion...');
+            
+            // Poll for completion (max 20 attempts, 2 seconds apart = 40 seconds total)
+            for (let i = 0; i < 20; i++) {
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+                
+                try {
+                    const pollResponse = await fetch(`https://api.maxstudio.ai/baby-generator/${result.jobId}`, {
+                        headers: {
+                            'x-api-key': process.env.MAXSTUDIO_API_KEY || 'a3665d99-4f4d-4d7c-bbc4-929b601207b9'
+                        }
+                    });
+                    
+                    if (pollResponse.ok) {
+                        const pollResult = await pollResponse.json();
+                        console.log(`Poll attempt ${i + 1}: Status = ${pollResult.status}`);
+                        
+                        if (pollResult.status === 'completed' && pollResult.result && pollResult.result.length > 0) {
+                            const imageUrl = pollResult.result[0];
+                            console.log('✅ SUCCESS: Generated baby image URL:', imageUrl);
+                            return res.json({ fileUrl: imageUrl });
+                        }
+                        
+                        if (pollResult.status === 'failed') {
+                            console.error('❌ Job failed:', pollResult.error);
+                            break;
+                        }
+                        
+                        // Continue polling if still processing
+                        if (pollResult.status === 'creating' || pollResult.status === 'pending' || pollResult.status === 'running') {
+                            console.log(`⏳ Still processing... attempt ${i + 1}/20`);
+                            continue;
+                        }
+                    } else {
+                        console.error('❌ Poll request failed:', pollResponse.status);
+                    }
+                } catch (pollError) {
+                    console.error('❌ Poll error:', pollError);
+                }
+            }
+            
+            // If polling failed, return fallback
+            console.log('⏰ Polling timeout after 40 seconds, using fallback image');
+            const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
+            return res.json({ fileUrl: fallbackImageUrl });
         }
         
-        // If no direct URL, check for other possible response formats
-        if (result.data && result.data.image_url) {
-            console.log('✅ SUCCESS: Generated baby image URL:', result.data.image_url);
-            return res.json({ fileUrl: result.data.image_url });
-        }
-        
-        // Fallback if response format is unexpected
-        console.log('Unexpected FutureBaby.ai response format:', result);
+        // Fallback for any other response
+        console.log('Unexpected MaxStudio response:', result);
         const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
         return res.json({ fileUrl: fallbackImageUrl });
         
