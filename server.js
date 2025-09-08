@@ -225,13 +225,12 @@ app.post('/generateChild', async (req, res) => {
             body: JSON.stringify({
                 version: "smoosh-sh/baby-mystic:ba5ab694",
                 input: {
-                    mother_image: motherImageData,
-                    father_image: fatherImageData,
+                    image: fatherImageData,
+                    image2: motherImageData,
                     gender: safeGender,
                     width: 1024,
                     height: 1024,
-                    num_inference_steps: 50,
-                    guidance_scale: 15
+                    steps: 50
                 }
             }),
             signal: controller.signal
