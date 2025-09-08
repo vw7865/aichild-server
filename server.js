@@ -194,7 +194,7 @@ app.post('/generateChildWithImages', upload.fields([
         // Check if prediction is complete
         if (result.status === 'succeeded' && result.output) {
             const imageUrl = Array.isArray(result.output) ? result.output[0] : result.output;
-            console.log('Successfully generated baby image URL:', imageUrl);
+            console.log('✅ IMMEDIATE SUCCESS: Generated baby image URL:', imageUrl);
             return res.json({ fileUrl: imageUrl });
         }
         
@@ -202,8 +202,8 @@ app.post('/generateChildWithImages', upload.fields([
         if (result.status === 'starting' || result.status === 'processing') {
             console.log('Prediction is processing, polling for completion...');
             
-            // Poll for completion (max 10 attempts, 3 seconds apart)
-            for (let i = 0; i < 10; i++) {
+            // Poll for completion (max 15 attempts, 3 seconds apart = 45 seconds total)
+            for (let i = 0; i < 15; i++) {
                 await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
                 
                 try {
@@ -219,24 +219,30 @@ app.post('/generateChildWithImages', upload.fields([
                         
                         if (pollResult.status === 'succeeded' && pollResult.output) {
                             const imageUrl = Array.isArray(pollResult.output) ? pollResult.output[0] : pollResult.output;
-                            console.log('Successfully generated baby image URL:', imageUrl);
+                            console.log('✅ SUCCESS: Generated baby image URL:', imageUrl);
                             return res.json({ fileUrl: imageUrl });
                         }
                         
                         if (pollResult.status === 'failed') {
-                            console.error('Prediction failed:', pollResult.error);
+                            console.error('❌ Prediction failed:', pollResult.error);
                             break;
                         }
+                        
+                        // Continue polling if still processing
+                        if (pollResult.status === 'starting' || pollResult.status === 'processing') {
+                            console.log(`⏳ Still processing... attempt ${i + 1}/15`);
+                            continue;
+                        }
                     } else {
-                        console.error('Poll request failed:', pollResponse.status);
+                        console.error('❌ Poll request failed:', pollResponse.status);
                     }
                 } catch (pollError) {
-                    console.error('Poll error:', pollError);
+                    console.error('❌ Poll error:', pollError);
                 }
             }
             
             // If polling failed, return fallback
-            console.log('Polling timeout, using fallback image');
+            console.log('⏰ Polling timeout after 45 seconds, using fallback image');
             const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
             return res.json({ fileUrl: fallbackImageUrl });
         }
