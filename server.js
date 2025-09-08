@@ -169,7 +169,10 @@ app.post('/generateChild', async (req, res) => {
         console.log('Enhanced prompt:', enhancedPrompt);
         console.log('Enhanced negative prompt:', enhancedNegativePrompt);
         
-        // Call Stable Diffusion API for baby generation
+        // Call Stable Diffusion API for toddler generation with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
         const response = await fetch('https://api.replicate.com/v1/predictions', {
             method: 'POST',
             headers: {
@@ -187,8 +190,11 @@ app.post('/generateChild', async (req, res) => {
                     guidance_scale: 7.5,
                     scheduler: "K_EULER"
                 }
-            })
+            }),
+            signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
         
         console.log('Stable Diffusion API response status:', response.status);
         
@@ -225,9 +231,9 @@ app.post('/generateChild', async (req, res) => {
         if (result.status === 'starting' || result.status === 'processing') {
             console.log('Prediction is processing, polling for completion...');
             
-            // Poll for completion (max 6 attempts, 3 seconds apart)
-            for (let i = 0; i < 6; i++) {
-                await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
+            // Poll for completion (max 4 attempts, 2 seconds apart)
+            for (let i = 0; i < 4; i++) {
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
                 
                 try {
                     const pollResponse = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
@@ -242,7 +248,7 @@ app.post('/generateChild', async (req, res) => {
                         
                         if (pollResult.status === 'succeeded' && pollResult.output && pollResult.output[0]) {
                             const imageUrl = pollResult.output[0];
-                            console.log('Successfully generated baby image URL:', imageUrl);
+                            console.log('Successfully generated toddler image URL:', imageUrl);
                             return res.json({ fileUrl: imageUrl });
                         }
                         
