@@ -143,13 +143,13 @@ app.post('/generateChild', async (req, res) => {
         
         console.log('API Token available: Yes');
         
-        // Use Stable Diffusion for baby generation with enhanced prompts for interracial accuracy
-        console.log('Generating baby image using Stable Diffusion');
+        // Use Stable Diffusion for toddler generation with enhanced prompts for interracial accuracy
+        console.log('Generating 2-year-old toddler image using Stable Diffusion');
         
-        // Enhanced prompt for accurate interracial baby generation with variety
-        const expressions = ['smiling', 'laughing', 'curious', 'sleepy', 'playful', 'content'];
-        const clothingStyles = ['adorable baby clothes', 'cute onesie', 'soft pajamas', 'colorful outfit', 'comfortable baby wear'];
-        const backgrounds = ['soft pastel background', 'natural home setting', 'gentle lighting', 'warm cozy environment'];
+        // Enhanced prompt for accurate interracial toddler generation with variety
+        const expressions = ['smiling', 'laughing', 'curious', 'playful', 'content', 'focused'];
+        const clothingStyles = ['adorable toddler clothes', 'cute shirt and pants', 'colorful outfit', 'comfortable play clothes', 'casual toddler wear'];
+        const backgrounds = ['soft pastel background', 'natural home setting', 'gentle lighting', 'warm cozy environment', 'playroom setting'];
         const skinTones = ['natural skin tone', 'realistic complexion', 'authentic coloring', 'diverse features'];
         
         // Add variety based on parameters
@@ -158,10 +158,13 @@ app.post('/generateChild', async (req, res) => {
         const randomBackground = backgrounds[Math.floor(Math.random() * backgrounds.length)];
         const randomSkinTone = skinTones[Math.floor(Math.random() * skinTones.length)];
         
-        let enhancedPrompt = `A beautiful ${safeAge} ${safeGender} baby, ${safePositivePrompt}, smooth baby skin, chubby cheeks, big innocent eyes, ${randomExpression}, ${randomClothing}, ${randomBackground}, ${randomSkinTone}, high quality, photorealistic, professional baby photography, natural lighting, soft focus, adorable, innocent, pure, wholesome, diverse features, mixed heritage, realistic facial features, authentic appearance`;
+        // Use 2-year-old characteristics instead of baby
+        const ageDescription = safeAge === 'baby' ? '2-year-old toddler' : `${safeAge} child`;
+        
+        let enhancedPrompt = `A beautiful ${ageDescription} ${safeGender}, ${safePositivePrompt}, smooth toddler skin, chubby cheeks, big curious eyes, ${randomExpression}, ${randomClothing}, ${randomBackground}, ${randomSkinTone}, high quality, photorealistic, professional child photography, natural lighting, soft focus, adorable, innocent, pure, wholesome, diverse features, mixed heritage, realistic facial features, authentic appearance, toddler proportions, age-appropriate features`;
         
         // Enhanced negative prompt for maximum safety and accuracy
-        let enhancedNegativePrompt = negativePromptText + ', adult features, mature face, facial hair, mustache, beard, goatee, sideburns, stubble, inappropriate content, sexual content, adult content, mature content, teenager, adolescent, puberty, naked, nude, undressed, clothing removed, inappropriate clothing, adult clothing, mature clothing, teenager clothing, adolescent clothing, puberty clothing, exposed, revealing, inappropriate, sexual, adult, mature, grown up, man, male adult, inappropriate content, sexual, adult, mature, teenager, adolescent, puberty, naked, nude, undressed, clothing removed, inappropriate, sexual content, adult content, mature content, exposed, revealing, inappropriate clothing, adult clothing, mature clothing, teenager clothing, adolescent clothing, puberty clothing, blurry, low quality, distorted, deformed, ugly, scary, frightening, dark, shadowy, unnatural, artificial, fake, cartoon, anime, drawing, painting, sketch, illustration';
+        let enhancedNegativePrompt = negativePromptText + ', adult features, mature face, facial hair, mustache, beard, goatee, sideburns, stubble, inappropriate content, sexual content, adult content, mature content, teenager, adolescent, puberty, naked, nude, undressed, clothing removed, inappropriate clothing, adult clothing, mature clothing, teenager clothing, adolescent clothing, puberty clothing, exposed, revealing, inappropriate, sexual, adult, mature, grown up, man, male adult, inappropriate content, sexual, adult, mature, teenager, adolescent, puberty, naked, nude, undressed, clothing removed, inappropriate, sexual content, adult content, mature content, exposed, revealing, inappropriate clothing, adult clothing, mature clothing, teenager clothing, adolescent clothing, puberty clothing, blurry, low quality, distorted, deformed, ugly, scary, frightening, dark, shadowy, unnatural, artificial, fake, cartoon, anime, drawing, painting, sketch, illustration, newborn, infant, too young, premature, school age, elementary school, teenager, adolescent, puberty, adult proportions, mature body, adult clothing, school uniform';
         
         console.log('Enhanced prompt:', enhancedPrompt);
         console.log('Enhanced negative prompt:', enhancedNegativePrompt);
