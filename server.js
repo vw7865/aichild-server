@@ -148,14 +148,14 @@ app.post('/generateChildWithImages', upload.fields([
         });
         
         // Baby Mystic model requires PUBLIC URLs, not base64 data
-        // For now, use placeholder images with labels to show it's working
-        console.log('Using labeled placeholder images for Baby Mystic model...');
+        // Use different picsum images so you can see the difference
+        console.log('Using different picsum images for Baby Mystic model...');
         
-        // Use placeholder images with clear labels so you can see it's working
-        const motherImageUrl = `https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=Mother`;
-        const fatherImageUrl = `https://via.placeholder.com/400x400/4ECDC4/FFFFFF?text=Father`;
+        // Use different picsum images so you can see it's working
+        const motherImageUrl = `https://picsum.photos/400/400?random=1`;
+        const fatherImageUrl = `https://picsum.photos/400/400?random=2`;
         
-        console.log('Using labeled placeholder images:', { motherImageUrl, fatherImageUrl });
+        console.log('Using different picsum images:', { motherImageUrl, fatherImageUrl });
         
         // Call Baby Mystic model
         const response = await fetch('https://api.replicate.com/v1/predictions', {
