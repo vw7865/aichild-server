@@ -161,7 +161,7 @@ app.post('/generateChildWithImages', upload.fields([
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                version: "smoosh-sh/baby-mystic:ba5ab694",
+                version: "ba5ab694a9df055fa469e55eeab162cc288039da0abd8b19d956980cc3b49f6d",
                 input: {
                     image: fatherImageData,
                     image2: motherImageData,
@@ -354,7 +354,7 @@ app.post('/generateChild', async (req, res) => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                version: "smoosh-sh/baby-mystic:ba5ab694",
+                version: "ba5ab694a9df055fa469e55eeab162cc288039da0abd8b19d956980cc3b49f6d",
                 input: {
                     image: fatherImageData,
                     image2: motherImageData,
