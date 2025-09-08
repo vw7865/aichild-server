@@ -222,30 +222,36 @@ app.post('/generateChild', async (req, res) => {
         if (result.status === 'starting' || result.status === 'processing') {
             console.log('Prediction is processing, polling for completion...');
             
-            // Poll for completion (max 10 attempts, 5 seconds apart)
-            for (let i = 0; i < 10; i++) {
-                await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+            // Poll for completion (max 6 attempts, 3 seconds apart)
+            for (let i = 0; i < 6; i++) {
+                await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
                 
-                const pollResponse = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
-                    headers: {
-                        'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
-                    }
-                });
-                
-                if (pollResponse.ok) {
-                    const pollResult = await pollResponse.json();
-                    console.log(`Poll attempt ${i + 1}: Status = ${pollResult.status}`);
+                try {
+                    const pollResponse = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
+                        headers: {
+                            'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
+                        }
+                    });
                     
-                    if (pollResult.status === 'succeeded' && pollResult.output) {
-                        const imageUrl = pollResult.output[0];
-                        console.log('Successfully generated baby image URL:', imageUrl);
-                        return res.json({ fileUrl: imageUrl });
+                    if (pollResponse.ok) {
+                        const pollResult = await pollResponse.json();
+                        console.log(`Poll attempt ${i + 1}: Status = ${pollResult.status}`);
+                        
+                        if (pollResult.status === 'succeeded' && pollResult.output && pollResult.output[0]) {
+                            const imageUrl = pollResult.output[0];
+                            console.log('Successfully generated baby image URL:', imageUrl);
+                            return res.json({ fileUrl: imageUrl });
+                        }
+                        
+                        if (pollResult.status === 'failed') {
+                            console.error('Prediction failed:', pollResult.error);
+                            break;
+                        }
+                    } else {
+                        console.error('Poll request failed:', pollResponse.status);
                     }
-                    
-                    if (pollResult.status === 'failed') {
-                        console.error('Prediction failed:', pollResult.error);
-                        break;
-                    }
+                } catch (pollError) {
+                    console.error('Poll error:', pollError);
                 }
             }
             
