@@ -148,66 +148,28 @@ app.post('/generateChildWithImages', upload.fields([
         });
         
         // Baby Mystic model requires PUBLIC URLs, not base64 data
-        // Upload the actual parent images to get public URLs
-        console.log('Uploading parent images to get public URLs for Baby Mystic model...');
+        // Try using base64 data URLs first, fallback to placeholder if not supported
+        console.log('Converting parent images to base64 data URLs for Baby Mystic model...');
         
         let motherImageUrl, fatherImageUrl;
         
         try {
-            // Upload mother image to file.io to get public URL
-            const motherFormData = new FormData();
-            motherFormData.append('file', motherImage.buffer, { filename: 'mother.jpg', contentType: motherImage.mimetype });
+            // Convert images to base64 data URLs
+            const motherImageData = `data:${motherImage.mimetype};base64,${motherImage.buffer.toString('base64')}`;
+            const fatherImageData = `data:${fatherImage.mimetype};base64,${fatherImage.buffer.toString('base64')}`;
             
-            console.log('Uploading mother image to file.io...');
-            const motherUploadResponse = await fetch('https://file.io', {
-                method: 'POST',
-                body: motherFormData
-            });
+            // Try using base64 data URLs
+            motherImageUrl = motherImageData;
+            fatherImageUrl = fatherImageData;
             
-            if (!motherUploadResponse.ok) {
-                throw new Error(`Mother upload failed: ${motherUploadResponse.status}`);
-            }
+            console.log('Using base64 data URLs for parent images');
             
-            const motherUploadResult = await motherUploadResponse.json();
-            console.log('Mother upload result:', motherUploadResult);
-            
-            if (!motherUploadResult.success || !motherUploadResult.link) {
-                throw new Error('Mother upload failed - no link returned');
-            }
-            
-            motherImageUrl = motherUploadResult.link;
-            
-            // Upload father image to file.io to get public URL
-            const fatherFormData = new FormData();
-            fatherFormData.append('file', fatherImage.buffer, { filename: 'father.jpg', contentType: fatherImage.mimetype });
-            
-            console.log('Uploading father image to file.io...');
-            const fatherUploadResponse = await fetch('https://file.io', {
-                method: 'POST',
-                body: fatherFormData
-            });
-            
-            if (!fatherUploadResponse.ok) {
-                throw new Error(`Father upload failed: ${fatherUploadResponse.status}`);
-            }
-            
-            const fatherUploadResult = await fatherUploadResponse.json();
-            console.log('Father upload result:', fatherUploadResult);
-            
-            if (!fatherUploadResult.success || !fatherUploadResult.link) {
-                throw new Error('Father upload failed - no link returned');
-            }
-            
-            fatherImageUrl = fatherUploadResult.link;
-            
-            console.log('Successfully uploaded parent images:', { motherImageUrl, fatherImageUrl });
-            
-        } catch (uploadError) {
-            console.error('Failed to upload parent images:', uploadError);
-            // Fallback to placeholder images if upload fails
+        } catch (conversionError) {
+            console.error('Failed to convert images to base64:', conversionError);
+            // Fallback to placeholder images if conversion fails
             motherImageUrl = 'https://picsum.photos/400/400';
             fatherImageUrl = 'https://picsum.photos/400/400';
-            console.log('Using fallback placeholder images due to upload failure');
+            console.log('Using fallback placeholder images');
         }
         
         // Call Baby Mystic model
