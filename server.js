@@ -199,8 +199,8 @@ app.post('/generateChildWithImages', upload.fields([
         if (result.status === 'starting' || result.status === 'processing') {
             console.log('Prediction is processing, polling for completion...');
             
-            // Poll for completion (max 6 attempts, 3 seconds apart)
-            for (let i = 0; i < 6; i++) {
+            // Poll for completion (max 10 attempts, 3 seconds apart)
+            for (let i = 0; i < 10; i++) {
                 await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
                 
                 try {
