@@ -211,20 +211,54 @@ app.post('/generateChild', async (req, res) => {
             return res.json({ fileUrl: fallbackImageUrl });
         }
         
-        // Get the generated image URL
-        const imageUrl = result.urls?.get || result.output?.[0];
-        console.log('Successfully generated baby image URL:', imageUrl);
+        // Check if prediction is complete
+        if (result.status === 'succeeded' && result.output) {
+            const imageUrl = result.output[0];
+            console.log('Successfully generated baby image URL:', imageUrl);
+            return res.json({ fileUrl: imageUrl });
+        }
         
-        if (!imageUrl) {
-            console.error('No image URL returned from Stable Diffusion API');
-            // Fallback to mock image if no URL returned
+        // If prediction is still processing, poll for completion
+        if (result.status === 'starting' || result.status === 'processing') {
+            console.log('Prediction is processing, polling for completion...');
+            
+            // Poll for completion (max 10 attempts, 5 seconds apart)
+            for (let i = 0; i < 10; i++) {
+                await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+                
+                const pollResponse = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
+                    headers: {
+                        'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
+                    }
+                });
+                
+                if (pollResponse.ok) {
+                    const pollResult = await pollResponse.json();
+                    console.log(`Poll attempt ${i + 1}: Status = ${pollResult.status}`);
+                    
+                    if (pollResult.status === 'succeeded' && pollResult.output) {
+                        const imageUrl = pollResult.output[0];
+                        console.log('Successfully generated baby image URL:', imageUrl);
+                        return res.json({ fileUrl: imageUrl });
+                    }
+                    
+                    if (pollResult.status === 'failed') {
+                        console.error('Prediction failed:', pollResult.error);
+                        break;
+                    }
+                }
+            }
+            
+            // If polling failed, return fallback
+            console.log('Polling timeout, using fallback image');
             const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
-            console.log('No URL returned, using fallback image:', fallbackImageUrl);
             return res.json({ fileUrl: fallbackImageUrl });
         }
         
-        // Return the generated baby image URL
-        res.json({ fileUrl: imageUrl });
+        // Fallback for any other status
+        console.log('Unexpected prediction status:', result.status);
+        const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
+        return res.json({ fileUrl: fallbackImageUrl });
         
     } catch (error) {
         console.error('Error:', error);
