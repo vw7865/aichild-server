@@ -143,25 +143,27 @@ app.post('/generateChild', async (req, res) => {
         
         console.log('API Token available: Yes');
         
-        // Use Stable Diffusion for toddler generation with enhanced prompts for interracial accuracy
-        console.log('Generating 2-year-old toddler image using Stable Diffusion');
+        // Use Flux for diverse toddler generation with enhanced prompts for interracial accuracy
+        console.log('Generating diverse 2-year-old toddler image using Flux');
         
-        // Enhanced prompt for accurate interracial toddler generation with variety
+        // Enhanced prompt for diverse toddler generation with variety
         const expressions = ['smiling', 'laughing', 'curious', 'playful', 'content', 'focused'];
         const clothingStyles = ['adorable toddler clothes', 'cute shirt and pants', 'colorful outfit', 'comfortable play clothes', 'casual toddler wear'];
         const backgrounds = ['soft pastel background', 'natural home setting', 'gentle lighting', 'warm cozy environment', 'playroom setting'];
-        const skinTones = ['natural skin tone', 'realistic complexion', 'authentic coloring', 'diverse features'];
+        const ethnicities = ['mixed race', 'multiracial', 'diverse heritage', 'interracial features', 'global features', 'worldwide features'];
+        const skinTones = ['natural skin tone', 'realistic complexion', 'authentic coloring', 'diverse features', 'mixed skin tone'];
         
         // Add variety based on parameters
         const randomExpression = expressions[Math.floor(Math.random() * expressions.length)];
         const randomClothing = clothingStyles[Math.floor(Math.random() * clothingStyles.length)];
         const randomBackground = backgrounds[Math.floor(Math.random() * backgrounds.length)];
+        const randomEthnicity = ethnicities[Math.floor(Math.random() * ethnicities.length)];
         const randomSkinTone = skinTones[Math.floor(Math.random() * skinTones.length)];
         
         // Use 2-year-old characteristics instead of baby
         const ageDescription = safeAge === 'baby' ? '2-year-old toddler' : `${safeAge} child`;
         
-        let enhancedPrompt = `A beautiful ${ageDescription} ${safeGender}, ${safePositivePrompt}, smooth toddler skin, chubby cheeks, big curious eyes, ${randomExpression}, ${randomClothing}, ${randomBackground}, ${randomSkinTone}, high quality, photorealistic, professional child photography, natural lighting, soft focus, adorable, innocent, pure, wholesome, diverse features, mixed heritage, realistic facial features, authentic appearance, toddler proportions, age-appropriate features`;
+        let enhancedPrompt = `A beautiful ${ageDescription} ${safeGender}, ${safePositivePrompt}, smooth toddler skin, chubby cheeks, big curious eyes, ${randomExpression}, ${randomClothing}, ${randomBackground}, ${randomEthnicity}, ${randomSkinTone}, high quality, photorealistic, professional child photography, natural lighting, soft focus, adorable, innocent, pure, wholesome, realistic facial features, authentic appearance, toddler proportions, age-appropriate features, diverse representation, inclusive features`;
         
         // Enhanced negative prompt for maximum safety and accuracy
         let enhancedNegativePrompt = negativePromptText + ', adult features, mature face, facial hair, mustache, beard, goatee, sideburns, stubble, inappropriate content, sexual content, adult content, mature content, teenager, adolescent, puberty, naked, nude, undressed, clothing removed, inappropriate clothing, adult clothing, mature clothing, teenager clothing, adolescent clothing, puberty clothing, exposed, revealing, inappropriate, sexual, adult, mature, grown up, man, male adult, inappropriate content, sexual, adult, mature, teenager, adolescent, puberty, naked, nude, undressed, clothing removed, inappropriate, sexual content, adult content, mature content, exposed, revealing, inappropriate clothing, adult clothing, mature clothing, teenager clothing, adolescent clothing, puberty clothing, blurry, low quality, distorted, deformed, ugly, scary, frightening, dark, shadowy, unnatural, artificial, fake, cartoon, anime, drawing, painting, sketch, illustration, newborn, infant, too young, premature, school age, elementary school, teenager, adolescent, puberty, adult proportions, mature body, adult clothing, school uniform';
@@ -169,7 +171,7 @@ app.post('/generateChild', async (req, res) => {
         console.log('Enhanced prompt:', enhancedPrompt);
         console.log('Enhanced negative prompt:', enhancedNegativePrompt);
         
-        // Call Stable Diffusion API for toddler generation with timeout
+        // Call Flux API for diverse toddler generation with timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
         
@@ -180,15 +182,14 @@ app.post('/generateChild', async (req, res) => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                version: "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+                version: "blackforest-labs/flux-dev:7c6c2a0b4a5b4b4b4b4b4b4b4b4b4b4b4b4b4b4b",
                 input: {
                     prompt: enhancedPrompt,
                     negative_prompt: enhancedNegativePrompt,
                     width: 1024,
                     height: 1024,
                     num_inference_steps: 20,
-                    guidance_scale: 7.5,
-                    scheduler: "K_EULER"
+                    guidance_scale: 3.5
                 }
             }),
             signal: controller.signal
@@ -196,11 +197,11 @@ app.post('/generateChild', async (req, res) => {
         
         clearTimeout(timeoutId);
         
-        console.log('Stable Diffusion API response status:', response.status);
+        console.log('Flux API response status:', response.status);
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Stable Diffusion API error response:', errorText);
+            console.error('Flux API error response:', errorText);
             console.error('Response status:', response.status);
             console.error('Response headers:', response.headers);
             // Fallback to mock image if API fails
@@ -210,10 +211,10 @@ app.post('/generateChild', async (req, res) => {
         }
         
         const result = await response.json();
-        console.log('Stable Diffusion API result:', JSON.stringify(result, null, 2));
+        console.log('Flux API result:', JSON.stringify(result, null, 2));
         
         if (result.error) {
-            console.error('Stable Diffusion API error:', result.error);
+            console.error('Flux API error:', result.error);
             // Fallback to mock image if API fails
             const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
             console.log('API error, using fallback image:', fallbackImageUrl);
