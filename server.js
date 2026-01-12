@@ -138,35 +138,6 @@ app.post('/generateChild', async (req, res) => {
             dressCode, safetyLevel, facialHairRemoval, childSafety
         } = req.body;
         
-        // Get image paths for father and mother
-        const fs = require('fs');
-        const path = require('path');
-        
-        // Find the uploaded images
-        const uploadsDir = path.join(__dirname, 'uploads', userId, childKey);
-        let fatherImagePath = null;
-        let motherImagePath = null;
-        
-        try {
-            const files = fs.readdirSync(uploadsDir);
-            for (const file of files) {
-                if (file.includes('father')) {
-                    fatherImagePath = path.join(uploadsDir, file);
-                } else if (file.includes('mother')) {
-                    motherImagePath = path.join(uploadsDir, file);
-                }
-            }
-        } catch (dirError) {
-            console.error('Error reading uploads directory:', dirError);
-        }
-        
-        console.log('Father image path:', fatherImagePath);
-        console.log('Mother image path:', motherImagePath);
-        
-        if (!fatherImagePath || !motherImagePath) {
-            throw new Error('Father and mother images not found. Please upload both images first.');
-        }
-        
         // Provide default values
         const safeGender = gender || 'girl';
         const safeAge = age || 'baby';
@@ -209,6 +180,8 @@ app.post('/generateChild', async (req, res) => {
         console.log('Replicate token exists (length):', replicateToken ? replicateToken.length : 0);
         
         // Find and read uploaded images
+        const fs = require('fs');
+        const path = require('path');
         const uploadsDir = path.join(__dirname, 'uploads', userId, childKey);
         let fatherImageData = null;
         let motherImageData = null;
