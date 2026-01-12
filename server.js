@@ -333,21 +333,21 @@ app.post('/generateChild', async (req, res) => {
             console.log('⚠️ Using fallback version format:', versionToUse);
         }
         
-        // Build input object - baby-mystic model needs father_image and mother_image
+        // Build input object - baby-mystic model expects 'image' and 'image2' (not father_image/mother_image)
         // Replicate accepts base64 data URLs
         const replicateInput = {
-            father_image: fatherImageUrl,
-            mother_image: motherImageUrl,
+            image: fatherImageUrl,      // First parent image
+            image2: motherImageUrl,     // Second parent image
             gender: safeGender
         };
         
         console.log('Using version:', versionToUse);
         console.log('Replicate input keys:', Object.keys(replicateInput));
-        console.log('Input has father_image:', !!replicateInput.father_image);
-        console.log('Input has mother_image:', !!replicateInput.mother_image);
+        console.log('Input has image (father):', !!replicateInput.image);
+        console.log('Input has image2 (mother):', !!replicateInput.image2);
         console.log('Gender:', safeGender);
-        console.log('Father image URL length:', fatherImageUrl ? fatherImageUrl.length : 0);
-        console.log('Mother image URL length:', motherImageUrl ? motherImageUrl.length : 0);
+        console.log('Image (father) URL length:', fatherImageUrl ? fatherImageUrl.length : 0);
+        console.log('Image2 (mother) URL length:', motherImageUrl ? motherImageUrl.length : 0);
         
         const createResponse = await fetch('https://api.replicate.com/v1/predictions', {
             method: 'POST',
