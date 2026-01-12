@@ -287,20 +287,67 @@ app.post('/generateChild', async (req, res) => {
         
         // Call Replicate API with maximum safety settings
         console.log('Calling Replicate API...');
-        console.log('Model version: smoosh-sh/baby-mystic:ba5ab694');
         
-        // Build input object - baby-mystic model typically needs images
+        // Try to get the model version ID first
+        // The model exists at: https://replicate.com/smoosh-sh/baby-mystic
+        // Version hash: ba5ab694
+        let versionToUse = null;
+        
+        try {
+            // First, get the model info to find the correct version ID
+            const modelInfoResponse = await fetch(`https://api.replicate.com/v1/models/smoosh-sh/baby-mystic`, {
+                headers: {
+                    'Authorization': `Token ${replicateToken}`,
+                }
+            });
+            
+            if (modelInfoResponse.ok) {
+                const modelInfo = await modelInfoResponse.json();
+                console.log('Model info retrieved successfully');
+                
+                // Find the version with hash ba5ab694
+                if (modelInfo.versions && Array.isArray(modelInfo.versions)) {
+                    const targetVersion = modelInfo.versions.find(v => v.id && v.id.includes('ba5ab694'));
+                    if (targetVersion) {
+                        versionToUse = targetVersion.id;
+                        console.log('✅ Found version with hash ba5ab694:', versionToUse);
+                    } else if (modelInfo.latest_version) {
+                        versionToUse = modelInfo.latest_version.id;
+                        console.log('⚠️ Using latest version (hash ba5ab694 not found):', versionToUse);
+                    }
+                } else if (modelInfo.latest_version) {
+                    versionToUse = modelInfo.latest_version.id;
+                    console.log('✅ Using latest version:', versionToUse);
+                }
+            } else {
+                const errorText = await modelInfoResponse.text();
+                console.error('Failed to get model info:', modelInfoResponse.status, errorText);
+            }
+        } catch (modelInfoError) {
+            console.error('Error fetching model info:', modelInfoError.message);
+        }
+        
+        // Fallback to version hash format if we couldn't get the full ID
+        if (!versionToUse) {
+            versionToUse = "smoosh-sh/baby-mystic:ba5ab694";
+            console.log('⚠️ Using fallback version format:', versionToUse);
+        }
+        
+        // Build input object - baby-mystic model needs father_image and mother_image
+        // Replicate accepts base64 data URLs
         const replicateInput = {
             father_image: fatherImageUrl,
             mother_image: motherImageUrl,
-            gender: safeGender,
-            prompt: prompt,
-            negative_prompt: negativePromptText
+            gender: safeGender
         };
         
+        console.log('Using version:', versionToUse);
         console.log('Replicate input keys:', Object.keys(replicateInput));
         console.log('Input has father_image:', !!replicateInput.father_image);
         console.log('Input has mother_image:', !!replicateInput.mother_image);
+        console.log('Gender:', safeGender);
+        console.log('Father image URL length:', fatherImageUrl ? fatherImageUrl.length : 0);
+        console.log('Mother image URL length:', motherImageUrl ? motherImageUrl.length : 0);
         
         const createResponse = await fetch('https://api.replicate.com/v1/predictions', {
             method: 'POST',
@@ -309,7 +356,7 @@ app.post('/generateChild', async (req, res) => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                version: "smoosh-sh/baby-mystic:ba5ab694",
+                version: versionToUse,
                 input: replicateInput
             })
         });
