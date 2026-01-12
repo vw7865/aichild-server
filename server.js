@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,27 +13,58 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Upload Image endpoint
-app.post('/uploadImage', (req, res) => {
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const userId = req.body.userId || req.query.userId || 'default-user';
+        const childKey = req.body.childKey || req.query.childKey || 'default-key';
+        const uploadPath = path.join(__dirname, 'uploads', userId, childKey);
+        
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        
+        cb(null, uploadPath);
+    },
+    filename: function (req, file, cb) {
+        const imageType = req.body.imageType || req.query.imageType || 'unknown';
+        const timestamp = Date.now();
+        cb(null, `${imageType}_${timestamp}.jpg`);
+    }
+});
+
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
+
+// Upload Image endpoint - actually save the file
+app.post('/uploadImage', upload.single('image'), (req, res) => {
     try {
         console.log('Received upload request');
         console.log('Request body:', req.body);
+        console.log('Uploaded file:', req.file);
+        
+        if (!req.file) {
+            return res.status(400).json({
+                error: 'No image file provided',
+                success: false,
+                status: 'error'
+            });
+        }
         
         // Extract parameters
-        const userId = req.body.userId || req.query.userId || 'default-user';
-        const childKey = req.body.childKey || req.query.childKey || 'default-key';
-        const imageType = req.body.imageType || req.query.imageType || 'unknown';
+        const userId = req.body.userId || 'default-user';
+        const childKey = req.body.childKey || 'default-key';
+        const imageType = req.body.imageType || 'unknown';
         
         console.log('Parameters:', { userId, childKey, imageType });
+        console.log('File saved at:', req.file.path);
         
-        // Generate mock file path
-        const mockFilePath = `uploads/${userId}/${childKey}/${imageType}_${Date.now()}.jpg`;
-        
-        console.log('Simulated file saved at:', mockFilePath);
-        
-        // Return success response
+        // Return success response with actual file path
         res.json({
-            filePath: mockFilePath,
+            filePath: req.file.path,
             message: 'Image uploaded successfully',
             userId: userId,
             childKey: childKey,
@@ -49,26 +83,31 @@ app.post('/uploadImage', (req, res) => {
     }
 });
 
-// Upload Aging Image endpoint
-app.post('/uploadAgingImage', (req, res) => {
+// Upload Aging Image endpoint - actually save the file
+app.post('/uploadAgingImage', upload.single('image'), (req, res) => {
     try {
         console.log('Received aging upload request');
         console.log('Request body:', req.body);
+        console.log('Uploaded file:', req.file);
+        
+        if (!req.file) {
+            return res.status(400).json({
+                error: 'No image file provided',
+                success: false,
+                status: 'error'
+            });
+        }
         
         // Extract parameters
-        const userId = req.body.userId || req.query.userId || 'default-user';
-        const childKey = req.body.childKey || req.query.childKey || 'default-key';
+        const userId = req.body.userId || 'default-user';
+        const childKey = req.body.childKey || 'default-key';
         
         console.log('Parameters:', { userId, childKey });
+        console.log('File saved at:', req.file.path);
         
-        // Generate mock file path
-        const mockFilePath = `uploads/${userId}/${childKey}/aging_${Date.now()}.jpg`;
-        
-        console.log('Simulated aging file saved at:', mockFilePath);
-        
-        // Return success response
+        // Return success response with actual file path
         res.json({
-            filePath: mockFilePath,
+            filePath: req.file.path,
             message: 'Aging image uploaded successfully',
             userId: userId,
             childKey: childKey,
@@ -98,6 +137,35 @@ app.post('/generateChild', async (req, res) => {
             negativePrompt, positivePrompt, expression, clothing,
             dressCode, safetyLevel, facialHairRemoval, childSafety
         } = req.body;
+        
+        // Get image paths for father and mother
+        const fs = require('fs');
+        const path = require('path');
+        
+        // Find the uploaded images
+        const uploadsDir = path.join(__dirname, 'uploads', userId, childKey);
+        let fatherImagePath = null;
+        let motherImagePath = null;
+        
+        try {
+            const files = fs.readdirSync(uploadsDir);
+            for (const file of files) {
+                if (file.includes('father')) {
+                    fatherImagePath = path.join(uploadsDir, file);
+                } else if (file.includes('mother')) {
+                    motherImagePath = path.join(uploadsDir, file);
+                }
+            }
+        } catch (dirError) {
+            console.error('Error reading uploads directory:', dirError);
+        }
+        
+        console.log('Father image path:', fatherImagePath);
+        console.log('Mother image path:', motherImagePath);
+        
+        if (!fatherImagePath || !motherImagePath) {
+            throw new Error('Father and mother images not found. Please upload both images first.');
+        }
         
         // Provide default values
         const safeGender = gender || 'girl';
@@ -135,10 +203,81 @@ app.post('/generateChild', async (req, res) => {
         // Get Replicate API token from environment variable
         const replicateToken = process.env.REPLICATE_API_TOKEN;
         if (!replicateToken) {
+            console.error('REPLICATE_API_TOKEN is not set!');
             throw new Error('REPLICATE_API_TOKEN environment variable is not set');
+        }
+        console.log('Replicate token exists (length):', replicateToken ? replicateToken.length : 0);
+        
+        // Find and read uploaded images
+        const uploadsDir = path.join(__dirname, 'uploads', userId, childKey);
+        let fatherImageData = null;
+        let motherImageData = null;
+        
+        console.log('Looking for images in:', uploadsDir);
+        
+        try {
+            if (fs.existsSync(uploadsDir)) {
+                const files = fs.readdirSync(uploadsDir);
+                console.log('Files in uploads directory:', files);
+                
+                for (const file of files) {
+                    const filePath = path.join(uploadsDir, file);
+                    const stats = fs.statSync(filePath);
+                    
+                    if (stats.isFile()) {
+                        if (file.includes('father')) {
+                            fatherImageData = fs.readFileSync(filePath);
+                            console.log('✅ Found and read father image:', file, 'Size:', fatherImageData.length, 'bytes');
+                        } else if (file.includes('mother')) {
+                            motherImageData = fs.readFileSync(filePath);
+                            console.log('✅ Found and read mother image:', file, 'Size:', motherImageData.length, 'bytes');
+                        }
+                    }
+                }
+            } else {
+                console.error('Uploads directory does not exist:', uploadsDir);
+            }
+        } catch (dirError) {
+            console.error('Error reading uploads directory:', dirError);
+        }
+        
+        // Convert images to base64 data URLs
+        let fatherImageUrl = null;
+        let motherImageUrl = null;
+        
+        if (fatherImageData) {
+            const base64 = fatherImageData.toString('base64');
+            fatherImageUrl = `data:image/jpeg;base64,${base64}`;
+            console.log('Father image converted to data URL (length):', fatherImageUrl.length);
+        }
+        
+        if (motherImageData) {
+            const base64 = motherImageData.toString('base64');
+            motherImageUrl = `data:image/jpeg;base64,${base64}`;
+            console.log('Mother image converted to data URL (length):', motherImageUrl.length);
+        }
+        
+        if (!fatherImageUrl || !motherImageUrl) {
+            throw new Error('Father and mother images not found. Please upload both images first.');
         }
         
         // Call Replicate API with maximum safety settings
+        console.log('Calling Replicate API...');
+        console.log('Model version: smoosh-sh/baby-mystic:ba5ab694');
+        
+        // Build input object - baby-mystic model typically needs images
+        const replicateInput = {
+            father_image: fatherImageUrl,
+            mother_image: motherImageUrl,
+            gender: safeGender,
+            prompt: prompt,
+            negative_prompt: negativePromptText
+        };
+        
+        console.log('Replicate input keys:', Object.keys(replicateInput));
+        console.log('Input has father_image:', !!replicateInput.father_image);
+        console.log('Input has mother_image:', !!replicateInput.mother_image);
+        
         const createResponse = await fetch('https://api.replicate.com/v1/predictions', {
             method: 'POST',
             headers: {
@@ -147,29 +286,48 @@ app.post('/generateChild', async (req, res) => {
             },
             body: JSON.stringify({
                 version: "smoosh-sh/baby-mystic:ba5ab694",
-                input: {
-                    prompt: prompt,
-                    negative_prompt: negativePromptText,
-                    num_inference_steps: 50,
-                    guidance_scale: 15,
-                    safety_tolerance: 2,
-                    safety_level: 4,
-                    content_filter: true,
-                    inappropriate_content: 'block',
-                    child_safety: 'maximum'
-                }
+                input: replicateInput
             })
         });
         
-        const prediction = await createResponse.json();
+        // Log response status
+        console.log('Replicate API response status:', createResponse.status, createResponse.statusText);
+        
+        // Get response text first to see what we're getting
+        const responseText = await createResponse.text();
+        console.log('Replicate API raw response:', responseText);
+        
+        let prediction;
+        try {
+            prediction = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('Failed to parse Replicate response as JSON:', parseError);
+            console.error('Response text:', responseText);
+            throw new Error('Invalid JSON response from Replicate API: ' + responseText.substring(0, 200));
+        }
+        
+        // Log full prediction object
+        console.log('Parsed prediction object:', JSON.stringify(prediction, null, 2));
+        
+        // Check HTTP status code
+        if (!createResponse.ok) {
+            console.error('Replicate API returned error status:', createResponse.status);
+            if (prediction.error) {
+                console.error('Replicate API error details:', prediction.error);
+                throw new Error(`Replicate API error (${createResponse.status}): ${JSON.stringify(prediction.error)}`);
+            } else {
+                throw new Error(`Replicate API returned status ${createResponse.status}: ${responseText.substring(0, 200)}`);
+            }
+        }
         
         if (prediction.error) {
-            console.error('Replicate API error:', prediction.error);
-            throw new Error(prediction.error);
+            console.error('Replicate API error in response:', prediction.error);
+            throw new Error('Replicate API error: ' + JSON.stringify(prediction.error));
         }
         
         if (!prediction.id) {
-            throw new Error('Failed to create prediction: No prediction ID returned');
+            console.error('No prediction ID in response. Full response:', JSON.stringify(prediction, null, 2));
+            throw new Error('Failed to create prediction: No prediction ID returned. Response: ' + JSON.stringify(prediction));
         }
         
         console.log('Prediction created:', prediction.id);
