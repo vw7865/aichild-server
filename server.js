@@ -16,8 +16,16 @@ app.use(express.urlencoded({ extended: true }));
 // Configure multer for file uploads
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const userId = req.body.userId || req.query.userId || 'default-user';
-        const childKey = req.body.childKey || req.query.childKey || 'default-key';
+        // Log what we have access to
+        console.log('Multer destination - req.body:', req.body);
+        console.log('Multer destination - req.query:', req.query);
+        
+        // Try to get userId and childKey - multer should have parsed form fields by now
+        const userId = req.body?.userId || req.query?.userId || 'default-user';
+        const childKey = req.body?.childKey || req.query?.childKey || 'default-key';
+        
+        console.log('Multer destination - Using userId:', userId, 'childKey:', childKey);
+        
         const uploadPath = path.join(__dirname, 'uploads', userId, childKey);
         
         // Create directory if it doesn't exist
@@ -28,7 +36,7 @@ const storage = multer.diskStorage({
         cb(null, uploadPath);
     },
     filename: function (req, file, cb) {
-        const imageType = req.body.imageType || req.query.imageType || 'unknown';
+        const imageType = req.body?.imageType || req.query?.imageType || 'unknown';
         const timestamp = Date.now();
         cb(null, `${imageType}_${timestamp}.jpg`);
     }
@@ -39,8 +47,51 @@ const upload = multer({
     limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
+// Middleware to move file to correct location if it was saved to wrong directory
+function handleFileMove(req, res, next) {
+    if (req.file) {
+        const userId = req.body?.userId || req.query?.userId;
+        const childKey = req.body?.childKey || req.query?.childKey;
+        
+        console.log('handleFileMove - userId:', userId, 'childKey:', childKey);
+        console.log('handleFileMove - Current file path:', req.file.path);
+        
+        // If we have the correct userId and childKey, and file was saved to wrong location
+        if (userId && childKey && userId !== 'default-user' && childKey !== 'default-key') {
+            const correctPath = path.join(__dirname, 'uploads', userId, childKey);
+            const currentPath = req.file.path;
+            
+            // Check if file is in wrong location
+            if (!currentPath.includes(userId) || !currentPath.includes(childKey)) {
+                console.log('File in wrong location, moving to:', correctPath);
+                
+                if (!fs.existsSync(correctPath)) {
+                    fs.mkdirSync(correctPath, { recursive: true });
+                }
+                
+                const imageType = req.body?.imageType || req.query?.imageType || 'unknown';
+                const timestamp = Date.now();
+                const newFileName = `${imageType}_${timestamp}.jpg`;
+                const newFilePath = path.join(correctPath, newFileName);
+                
+                try {
+                    // Copy file instead of move (in case original is needed)
+                    fs.copyFileSync(currentPath, newFilePath);
+                    // Update req.file to point to new location
+                    req.file.path = newFilePath;
+                    req.file.filename = newFileName;
+                    console.log('✅ File moved to correct location:', newFilePath);
+                } catch (moveError) {
+                    console.error('❌ Error moving file:', moveError);
+                }
+            }
+        }
+    }
+    next();
+}
+
 // Upload Image endpoint - actually save the file
-app.post('/uploadImage', upload.single('image'), (req, res) => {
+app.post('/uploadImage', upload.single('image'), handleFileMove, (req, res) => {
     try {
         console.log('Received upload request');
         console.log('Request body:', req.body);
@@ -84,7 +135,7 @@ app.post('/uploadImage', upload.single('image'), (req, res) => {
 });
 
 // Upload Aging Image endpoint - actually save the file
-app.post('/uploadAgingImage', upload.single('image'), (req, res) => {
+app.post('/uploadAgingImage', upload.single('image'), handleFileMove, (req, res) => {
     try {
         console.log('Received aging upload request');
         console.log('Request body:', req.body);
