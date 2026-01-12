@@ -1,20 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
-const multer = require('multer');
-const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Configure multer for file uploads
-const storage = multer.memoryStorage();
-const upload = multer({ 
-    storage: storage,
-    limits: {
-        fileSize: 10 * 1024 * 1024 // 10MB limit
-    }
-});
 
 // Middleware
 app.use(cors());
@@ -22,59 +11,32 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Upload Image endpoint
-app.post('/uploadImage', upload.single('image'), (req, res) => {
+app.post('/uploadImage', (req, res) => {
     try {
         console.log('Received upload request');
-        console.log('File:', req.file ? 'Present' : 'Missing');
-        console.log('Body:', req.body);
-        
-        if (!req.file) {
-            return res.status(400).json({
-                error: 'No image file provided',
-                success: false
-            });
-        }
+        console.log('Request body:', req.body);
         
         // Extract parameters
-        const userId = req.body.userId || 'default-user';
-        const childKey = req.body.childKey || 'default-key';
-        const imageType = req.body.imageType || 'parent';
+        const userId = req.body.userId || req.query.userId || 'default-user';
+        const childKey = req.body.childKey || req.query.childKey || 'default-key';
+        const imageType = req.body.imageType || req.query.imageType || 'unknown';
         
         console.log('Parameters:', { userId, childKey, imageType });
-        console.log('File details:', {
-            originalname: req.file.originalname,
-            mimetype: req.file.mimetype,
-            size: req.file.size
-        });
         
-        // Store the image data in memory (in a real app, you'd save to disk or cloud storage)
-        // For now, we'll just return success with the image data
-        const imageData = {
-            buffer: req.file.buffer,
-            mimetype: req.file.mimetype,
-            originalname: req.file.originalname
-        };
+        // Generate mock file path
+        const mockFilePath = `uploads/${userId}/${childKey}/${imageType}_${Date.now()}.jpg`;
         
-        // Store in a simple in-memory store (in production, use Redis or database)
-        if (!global.uploadedImages) {
-            global.uploadedImages = {};
-        }
-        
-        const imageKey = `${userId}_${childKey}_${imageType}`;
-        global.uploadedImages[imageKey] = imageData;
-        
-        console.log('Image stored with key:', imageKey);
+        console.log('Simulated file saved at:', mockFilePath);
         
         // Return success response
         res.json({
-            filePath: `uploads/${userId}/${childKey}/${imageType}_${Date.now()}.jpg`,
+            filePath: mockFilePath,
             message: 'Image uploaded successfully',
             userId: userId,
             childKey: childKey,
             imageType: imageType,
             success: true,
-            status: 'success',
-            imageKey: imageKey
+            status: 'success'
         });
         
     } catch (error) {
@@ -124,129 +86,6 @@ app.post('/uploadAgingImage', (req, res) => {
     }
 });
 
-// Generate Child with Images endpoint - handles both upload and generation in one request
-app.post('/generateChildWithImages', upload.fields([
-    { name: 'motherImage', maxCount: 1 },
-    { name: 'fatherImage', maxCount: 1 }
-]), async (req, res) => {
-    try {
-        console.log('Received generate child with images request');
-        
-        // Check if both images are uploaded
-        if (!req.files || !req.files.motherImage || !req.files.fatherImage) {
-            return res.status(400).json({ error: 'Both mother and father images are required' });
-        }
-        
-        const motherImage = req.files.motherImage[0];
-        const fatherImage = req.files.fatherImage[0];
-        const gender = req.body.gender || 'girl';
-        
-        console.log('Processing images:', {
-            motherSize: motherImage.buffer.length,
-            fatherSize: fatherImage.buffer.length,
-            gender: gender
-        });
-        
-        // MaxStudio requires PUBLIC URLs, not base64 data
-        // Use specific parent images for testing MaxStudio integration
-        console.log('Using specific parent images for MaxStudio testing...');
-        
-        // Use specific picsum images to represent Taylor Swift and Travis Kelce
-        const motherImageUrl = `https://picsum.photos/400/400?random=3`; // Taylor Swift representation
-        const fatherImageUrl = `https://picsum.photos/400/400?random=4`; // Travis Kelce representation
-        
-        console.log('Using specific parent images:', { motherImageUrl, fatherImageUrl });
-        
-        console.log('Calling MaxStudio Baby Generator with parent images...');
-        
-        // Call MaxStudio Baby Generator API
-        const response = await fetch('https://api.maxstudio.ai/baby-generator', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': process.env.MAXSTUDIO_API_KEY || 'a3665d99-4f4d-4d7c-bbc4-929b601207b9'
-            },
-            body: JSON.stringify({
-                fatherImage: fatherImageUrl,
-                motherImage: motherImageUrl,
-                gender: gender === 'boy' ? 'babyBoy' : 'babyGirl'
-            })
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('MaxStudio API error:', errorText);
-            return res.status(500).json({ error: 'Failed to generate baby image' });
-        }
-        
-        const result = await response.json();
-        console.log('MaxStudio API result:', JSON.stringify(result, null, 2));
-        
-        if (result.error) {
-            console.error('MaxStudio API error:', result.error);
-            return res.status(500).json({ error: 'Failed to generate baby image' });
-        }
-        
-        // MaxStudio returns a jobId, we need to poll for completion
-        if (result.jobId) {
-            console.log('Job created, polling for completion...');
-            
-            // Poll for completion (max 20 attempts, 2 seconds apart = 40 seconds total)
-            for (let i = 0; i < 20; i++) {
-                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-                
-                try {
-                    const pollResponse = await fetch(`https://api.maxstudio.ai/baby-generator/${result.jobId}`, {
-                        headers: {
-                            'x-api-key': process.env.MAXSTUDIO_API_KEY || 'a3665d99-4f4d-4d7c-bbc4-929b601207b9'
-                        }
-                    });
-                    
-                    if (pollResponse.ok) {
-                        const pollResult = await pollResponse.json();
-                        console.log(`Poll attempt ${i + 1}: Status = ${pollResult.status}`);
-                        
-                        if (pollResult.status === 'completed' && pollResult.result && pollResult.result.length > 0) {
-                            const imageUrl = pollResult.result[0];
-                            console.log('✅ SUCCESS: Generated baby image URL:', imageUrl);
-                            return res.json({ fileUrl: imageUrl });
-                        }
-                        
-                        if (pollResult.status === 'failed') {
-                            console.error('❌ Job failed:', pollResult.error);
-                            break;
-                        }
-                        
-                        // Continue polling if still processing
-                        if (pollResult.status === 'creating' || pollResult.status === 'pending' || pollResult.status === 'running') {
-                            console.log(`⏳ Still processing... attempt ${i + 1}/20`);
-                            continue;
-                        }
-                    } else {
-                        console.error('❌ Poll request failed:', pollResponse.status);
-                    }
-                } catch (pollError) {
-                    console.error('❌ Poll error:', pollError);
-                }
-            }
-            
-            // If polling failed, return fallback
-            console.log('⏰ Polling timeout after 40 seconds, using fallback image');
-            const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
-            return res.json({ fileUrl: fallbackImageUrl });
-        }
-        
-        // Fallback for any other response
-        console.log('Unexpected MaxStudio response:', result);
-        const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
-        return res.json({ fileUrl: fallbackImageUrl });
-        
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ error: 'Failed to generate baby image: ' + error.message });
-    }
-});
-
 // Generate Child endpoint
 app.post('/generateChild', async (req, res) => {
     try {
@@ -268,27 +107,6 @@ app.post('/generateChild', async (req, res) => {
         const safeExpression = expression || 'smiling';
         const safeClothing = clothing || 'appropriate';
         const safeDressCode = dressCode || 'baby clothes';
-        
-        // Get uploaded parent images
-        if (!global.uploadedImages) {
-            global.uploadedImages = {};
-        }
-        
-        const motherKey = `${userId}_${childKey}_mother`;
-        const fatherKey = `${userId}_${childKey}_father`;
-        
-        const motherImage = global.uploadedImages[motherKey];
-        const fatherImage = global.uploadedImages[fatherKey];
-        
-        console.log('Looking for parent images:', { motherKey, fatherKey });
-        console.log('Mother image found:', !!motherImage);
-        console.log('Father image found:', !!fatherImage);
-        
-        if (!motherImage || !fatherImage) {
-            console.log('Missing parent images, using fallback');
-            const mockImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
-            return res.json({ fileUrl: mockImageUrl });
-        }
         
         console.log('Using parameters:', {
             gender: safeGender,
@@ -314,140 +132,127 @@ app.post('/generateChild', async (req, res) => {
         console.log('Generated prompt:', prompt);
         console.log('Generated negative prompt:', negativePromptText);
         
-        // Check if API token is available
-        if (!process.env.REPLICATE_API_TOKEN) {
-            console.error('REPLICATE_API_TOKEN not set - using mock response for testing');
-            // Return a mock response for testing
-            const mockImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
-            console.log('Returning mock image URL:', mockImageUrl);
-            return res.json({ fileUrl: mockImageUrl });
+        // Get Replicate API token from environment variable
+        const replicateToken = process.env.REPLICATE_API_TOKEN;
+        if (!replicateToken) {
+            throw new Error('REPLICATE_API_TOKEN environment variable is not set');
         }
         
-        console.log('API Token available: Yes');
-        
-        // Use Baby Mystic model for accurate baby generation from parent images
-        console.log('Generating accurate baby image using Baby Mystic model with parent images - FORCE DEPLOY');
-        
-        // Baby Mystic model requires PUBLIC URLs, not base64 data
-        // Upload the actual parent images to get public URLs
-        console.log('Baby Mystic requires public URLs, uploading parent images...');
-        console.log('Mother image size:', motherImage.buffer.length);
-        console.log('Father image size:', fatherImage.buffer.length);
-        
-        // Convert images to base64 data URLs for immediate use
-        const motherImageData = `data:${motherImage.mimetype};base64,${motherImage.buffer.toString('base64')}`;
-        const fatherImageData = `data:${fatherImage.mimetype};base64,${fatherImage.buffer.toString('base64')}`;
-        
-        console.log('Using base64 data URLs for Baby Mystic model');
-        console.log('Mother image size:', motherImage.buffer.length);
-        console.log('Father image size:', fatherImage.buffer.length);
-        
-        // Call Stable Diffusion API for diverse toddler generation with timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-        
-        const response = await fetch('https://api.replicate.com/v1/predictions', {
+        // Call Replicate API with maximum safety settings
+        const createResponse = await fetch('https://api.replicate.com/v1/predictions', {
             method: 'POST',
             headers: {
-                'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
+                'Authorization': `Token ${replicateToken}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                version: "ba5ab694a9df055fa469e55eeab162cc288039da0abd8b19d956980cc3b49f6d",
+                version: "smoosh-sh/baby-mystic:ba5ab694",
                 input: {
-                    image: fatherImageData,
-                    image2: motherImageData,
-                    gender: safeGender,
-                    width: 1024,
-                    height: 1024,
-                    steps: 50
+                    prompt: prompt,
+                    negative_prompt: negativePromptText,
+                    num_inference_steps: 50,
+                    guidance_scale: 15,
+                    safety_tolerance: 2,
+                    safety_level: 4,
+                    content_filter: true,
+                    inappropriate_content: 'block',
+                    child_safety: 'maximum'
                 }
-            }),
-            signal: controller.signal
+            })
         });
         
-        clearTimeout(timeoutId);
+        const prediction = await createResponse.json();
         
-        console.log('Baby Mystic API response status:', response.status);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Baby Mystic API error response:', errorText);
-            console.error('Response status:', response.status);
-            console.error('Response headers:', response.headers);
-            // Fallback to mock image if API fails
-            const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
-            console.log('API failed, using fallback image:', fallbackImageUrl);
-            return res.json({ fileUrl: fallbackImageUrl });
+        if (prediction.error) {
+            console.error('Replicate API error:', prediction.error);
+            throw new Error(prediction.error);
         }
         
-        const result = await response.json();
-        console.log('Baby Mystic API result:', JSON.stringify(result, null, 2));
-        
-        if (result.error) {
-            console.error('Baby Mystic API error:', result.error);
-            // Fallback to mock image if API fails
-            const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
-            console.log('API error, using fallback image:', fallbackImageUrl);
-            return res.json({ fileUrl: fallbackImageUrl });
+        if (!prediction.id) {
+            throw new Error('Failed to create prediction: No prediction ID returned');
         }
         
-        // Check if prediction is complete - Baby Mystic returns different format
-        if (result.status === 'succeeded' && result.output) {
-            // Baby Mystic might return a single URL or array
-            const imageUrl = Array.isArray(result.output) ? result.output[0] : result.output;
-            console.log('Successfully generated baby image URL:', imageUrl);
-            return res.json({ fileUrl: imageUrl });
-        }
+        console.log('Prediction created:', prediction.id);
+        console.log('Prediction status:', prediction.status);
         
-        // If prediction is still processing, poll for completion
-        if (result.status === 'starting' || result.status === 'processing') {
-            console.log('Prediction is processing, polling for completion...');
+        // Poll for prediction completion
+        let result = prediction;
+        let pollCount = 0;
+        const maxPolls = 120; // Maximum 2 minutes (120 * 1 second)
+        
+        while ((result.status === 'starting' || result.status === 'processing') && pollCount < maxPolls) {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
             
-            // Poll for completion (max 4 attempts, 2 seconds apart)
-            for (let i = 0; i < 4; i++) {
-                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-                
-                try {
-                    const pollResponse = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
-                        headers: {
-                            'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
-                        }
-                    });
-                    
-                    if (pollResponse.ok) {
-                        const pollResult = await pollResponse.json();
-                        console.log(`Poll attempt ${i + 1}: Status = ${pollResult.status}`);
-                        
-                        if (pollResult.status === 'succeeded' && pollResult.output) {
-                            // Baby Mystic might return a single URL or array
-                            const imageUrl = Array.isArray(pollResult.output) ? pollResult.output[0] : pollResult.output;
-                            console.log('Successfully generated baby image URL:', imageUrl);
-                            return res.json({ fileUrl: imageUrl });
-                        }
-                        
-                        if (pollResult.status === 'failed') {
-                            console.error('Prediction failed:', pollResult.error);
-                            break;
-                        }
-                    } else {
-                        console.error('Poll request failed:', pollResponse.status);
-                    }
-                } catch (pollError) {
-                    console.error('Poll error:', pollError);
+            const pollResponse = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
+                headers: {
+                    'Authorization': `Token ${replicateToken}`,
+                }
+            });
+            
+            result = await pollResponse.json();
+            pollCount++;
+            
+            console.log(`Poll ${pollCount}: Status = ${result.status}`);
+            
+            if (result.error) {
+                console.error('Replicate polling error:', result.error);
+                throw new Error(result.error);
+            }
+        }
+        
+        // Check final status
+        if (result.status === 'succeeded') {
+            // Extract the actual output URL
+            let outputUrl = null;
+            
+            if (result.output) {
+                // Output can be a string, array, or object
+                if (typeof result.output === 'string') {
+                    outputUrl = result.output;
+                } else if (Array.isArray(result.output) && result.output.length > 0) {
+                    outputUrl = result.output[0];
+                } else if (result.output.url) {
+                    outputUrl = result.output.url;
                 }
             }
             
-            // If polling failed, return fallback
-            console.log('Polling timeout, using fallback image');
-            const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
-            return res.json({ fileUrl: fallbackImageUrl });
+            // Fallback to urls.get if output is not available
+            if (!outputUrl && result.urls && result.urls.get) {
+                outputUrl = result.urls.get;
+            }
+            
+            if (!outputUrl) {
+                console.error('No output URL found in result:', JSON.stringify(result, null, 2));
+                throw new Error('Replicate prediction succeeded but no output URL found');
+            }
+            
+            // Additional safety check
+            if (outputUrl.includes('inappropriate') || outputUrl.includes('placeholder')) {
+                throw new Error('Content safety check failed - placeholder detected');
+            }
+            
+            console.log('✅ Successfully generated image URL:', outputUrl);
+            
+            // Return the ACTUAL Replicate output URL
+            res.json({ 
+                fileUrl: outputUrl,
+                status: 'success',
+                predictionId: result.id
+            });
+            
+        } else if (result.status === 'failed') {
+            console.error('Replicate prediction failed:', result.error);
+            res.status(500).json({ 
+                error: 'Replicate prediction failed: ' + (result.error || 'Unknown error'),
+                status: 'failed'
+            });
+        } else {
+            console.error('Prediction timed out or unknown status:', result.status);
+            res.status(500).json({ 
+                error: 'Prediction did not complete. Status: ' + result.status,
+                status: result.status
+            });
         }
-        
-        // Fallback for any other status
-        console.log('Unexpected prediction status:', result.status);
-        const fallbackImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face';
-        return res.json({ fileUrl: fallbackImageUrl });
         
     } catch (error) {
         console.error('Error:', error);
@@ -455,44 +260,122 @@ app.post('/generateChild', async (req, res) => {
     }
 });
 
-// Debug endpoint to check stored images
-app.get('/debug/images', (req, res) => {
-    if (!global.uploadedImages) {
-        return res.json({ message: 'No images stored', count: 0, images: {} });
+// Generate Older (Face Aging) endpoint
+app.post('/generateOlder', async (req, res) => {
+    try {
+        console.log('Received generate older request');
+        console.log('Request body:', req.body);
+        
+        const { userId, childKey, age } = req.body;
+        
+        // Get the uploaded aging image path
+        const imagePath = `uploads/${userId}/${childKey}/aging_*.jpg`;
+        
+        // Get Replicate API token from environment variable
+        const replicateToken = process.env.REPLICATE_API_TOKEN;
+        if (!replicateToken) {
+            throw new Error('REPLICATE_API_TOKEN environment variable is not set');
+        }
+        
+        // Note: You'll need to implement actual file reading and Replicate API call here
+        // This is a placeholder - you need to:
+        // 1. Read the uploaded image file
+        // 2. Call Replicate API for face aging
+        // 3. Poll for completion
+        // 4. Return the actual output URL
+        
+        // For now, this is a template - you'll need to adapt it based on your Replicate model
+        const createResponse = await fetch('https://api.replicate.com/v1/predictions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Token ${replicateToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                version: "YOUR_AGING_MODEL_VERSION", // Replace with actual model
+                input: {
+                    image: imagePath, // You'll need to convert to base64 or upload to a URL
+                    age: age || 50
+                }
+            })
+        });
+        
+        const prediction = await createResponse.json();
+        
+        if (prediction.error) {
+            console.error('Replicate API error:', prediction.error);
+            throw new Error(prediction.error);
+        }
+        
+        if (!prediction.id) {
+            throw new Error('Failed to create prediction: No prediction ID returned');
+        }
+        
+        console.log('Aging prediction created:', prediction.id);
+        
+        // Poll for completion (same pattern as generateChild)
+        let result = prediction;
+        let pollCount = 0;
+        const maxPolls = 120;
+        
+        while ((result.status === 'starting' || result.status === 'processing') && pollCount < maxPolls) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const pollResponse = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
+                headers: {
+                    'Authorization': `Token ${replicateToken}`,
+                }
+            });
+            
+            result = await pollResponse.json();
+            pollCount++;
+            console.log(`Aging poll ${pollCount}: Status = ${result.status}`);
+        }
+        
+        if (result.status === 'succeeded') {
+            let outputUrl = null;
+            
+            if (result.output) {
+                if (typeof result.output === 'string') {
+                    outputUrl = result.output;
+                } else if (Array.isArray(result.output) && result.output.length > 0) {
+                    outputUrl = result.output[0];
+                } else if (result.output.url) {
+                    outputUrl = result.output.url;
+                }
+            }
+            
+            if (!outputUrl && result.urls && result.urls.get) {
+                outputUrl = result.urls.get;
+            }
+            
+            if (!outputUrl) {
+                throw new Error('Replicate prediction succeeded but no output URL found');
+            }
+            
+            console.log('✅ Successfully generated aging image URL:', outputUrl);
+            
+            res.json({ 
+                fileUrl: outputUrl,
+                status: 'success',
+                predictionId: result.id
+            });
+        } else {
+            res.status(500).json({ 
+                error: 'Aging prediction failed: ' + (result.error || result.status),
+                status: result.status
+            });
+        }
+        
+    } catch (error) {
+        console.error('Aging generation error:', error);
+        res.status(500).json({ error: 'Failed to generate aging image: ' + error.message });
     }
-    
-    const imageKeys = Object.keys(global.uploadedImages);
-    const imageInfo = {};
-    
-    for (const key of imageKeys) {
-        const image = global.uploadedImages[key];
-        imageInfo[key] = {
-            size: image.buffer.length,
-            mimetype: image.mimetype,
-            originalname: image.originalname
-        };
-    }
-    
-    res.json({ 
-        message: 'Stored images', 
-        count: imageKeys.length, 
-        images: imageInfo 
-    });
 });
 
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', message: 'AI Child Server is running' });
-});
-
-// Test endpoint to check environment variables
-app.get('/test', (req, res) => {
-    res.json({
-        message: 'Server is working',
-        hasApiToken: !!process.env.REPLICATE_API_TOKEN,
-        nodeEnv: process.env.NODE_ENV,
-        timestamp: new Date().toISOString()
-    });
 });
 
 // Start server
